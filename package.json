@@ -1,0 +1,34 @@
+{
+  "name": "localinspire-backend",
+  "version": "1.0.0",
+  "description": "Local Inspire backend",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "server": "nodemon server.js -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asktoexpert/localinspire-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asktoexpert/localinspire-backend/issues"
+  },
+  "homepage": "https://github.com/asktoexpert/localinspire-backend#readme",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.1",
+    "jsonwebtoken": "^8.5.1",
+    "mongoose": "^6.6.5",
+    "uuid": "^9.0.0",
+    "validator": "^13.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
