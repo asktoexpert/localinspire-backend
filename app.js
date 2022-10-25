@@ -5,10 +5,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.json({ extended: true }));
 app.use('/api/v1/users', userRouter);
 
-app.all('*', (req, res) => {
-  res.send(`Invalid url: `, req.originalUrl);
-});
+// app.all('*', (req, res) => {
+//   res.status(400).send(`Invalid url: `, req.originalUrl);
+// });
 
 module.exports = app;
