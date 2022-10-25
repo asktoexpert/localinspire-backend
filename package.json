@@ -4,6 +4,7 @@
   "description": "Local Inspire backend",
   "main": "server.js",
   "scripts": {
+    "start": "node server.js -w",
     "server": "nodemon server.js -w"
   },
   "repository": {
