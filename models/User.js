@@ -17,9 +17,13 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: [false, 'Please provide a password'],
       minlength: 6,
       select: false,
+    },
+    signedUpWith: {
+      type: String,
+      enum: ['credentials', 'google', 'facebook', 'twitter'],
     },
   },
   {
@@ -29,14 +33,11 @@ const userSchema = mongoose.Schema(
   }
 );
 
-userSchema.statics.verifyPassword = async function (passwordInput, hashedPassword) {
-  // console.log(passwordInput, hashedPassword);
-  // console.log(await bcrypt.compare(passwordInput, hashedPassword));
+userSchema.methods.verifyPassword = async function (passwordInput, hashedPassword) {
   return await bcrypt.compare(passwordInput, hashedPassword);
 };
 
 userSchema.statics.encryptPassword = async function (password) {
-  console.log('Encrypted password: ', password);
   return await bcrypt.hash(password, 12);
 };
 

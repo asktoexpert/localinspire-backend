@@ -23,9 +23,7 @@ exports.signup = async function (req, res) {
       });
     }
 
-    const newUser = await User.create(req.body);
-    // console.log(newUser);
-
+    const newUser = await User.create({ ...req.body, signedUpWith: 'credentials' });
     res.status(201).json({
       status: 'SUCCESS',
       data: {
@@ -44,7 +42,7 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email: req.body.email }).select('+password');
     // .select('password');
 
-    if (!user || !(await User.verifyPassword(req.body.password, user.password))) {
+    if (!user || !(await user.verifyPassword(req.body.password, user.password))) {
       return res.status(400).json({
         status: 'FAIL',
         reason: 'BAD_CREDENTIALS',
@@ -63,5 +61,33 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
+  }
+};
+
+exports.oAuth = async function (req, res, next) {
+  const { verifiedUser } = req;
+  console.log('verifiedUser: ', verifiedUser);
+
+  try {
+    let user = await User.findOne({ email: verifiedUser.email });
+
+    if (!user) {
+      const newUser = { username: verifiedUser.name, email: verifiedUser.email };
+      user = await User.create({ ...newUser, signedUpWith: req.params.provider });
+    }
+    res.status(201).json({
+      status: 'SUCCESS',
+      data: {
+        ...user.toObject(),
+        username: verifiedUser.name,
+        email: verifiedUser.email,
+        currentlyLoggedInWith: req.params.provider,
+        accessToken: signToken(user._id, user.email),
+        rft: getRefreshToken(),
+      },
+    });
+  } catch (err) {
+    console.log('UnKnown erroR: ', err);
+    res.status(400).json({ error: err });
   }
 };
