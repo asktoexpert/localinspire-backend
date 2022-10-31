@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const uuid = require('uuid');
 const bcrypt = require('bcryptjs');
+const stringUtils = require('../utils/string-utils');
 
 const signToken = (userId, userEmail) => {
   const token = jwt.sign({ id: userId, email: userEmail }, process.env.JWT_SECRET, {
@@ -40,16 +41,25 @@ exports.signup = async function (req, res) {
 exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email }).select('+password');
-    // .select('password');
 
     if (!user || !(await user.verifyPassword(req.body.password, user.password))) {
       return res.status(400).json({
         status: 'FAIL',
-        reason: 'BAD_CREDENTIALS',
-        msg: 'Invalid credentials',
+        reason: 'WRONG_CREDENTIALS',
+        msg: 'Wrong login credentials',
       });
     }
-    // console.log(user);
+
+    // If user earlier signed up with a non-credentials provider
+    if (user.signedUpWith !== 'credentials') {
+      return res.status(400).json({
+        status: 'ERROR',
+        reason: 'WRONG_LOGIN_STRATEGY',
+        msg: `This user account can only be logged in with ${stringUtils.toTitleCase(
+          user.signedUpWith
+        )}`,
+      });
+    }
 
     res.status(201).json({
       status: 'SUCCESS',

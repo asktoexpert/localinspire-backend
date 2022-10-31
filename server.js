@@ -1,15 +1,12 @@
 const http = require('http');
-const app = require('./app');
 const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const { connectMongooseDB } = require('./databases/mongoose');
-
 dotenv.config({ path: './config.env' });
 
+const app = require('./app');
+const { connectMongooseDB } = require('./databases/mongoose');
+
 connectMongooseDB()
-  .then(conn => {
-    console.log('Mongoose connected successfully');
-  })
+  .then(conn => console.log('Mongoose connected successfully'))
   .catch(err => console.log('Error in mongoose connection: ', err));
 
 const server = http.createServer(app);
