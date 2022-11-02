@@ -5,7 +5,7 @@ const businessCacheController = require('../middleware/cache/businessCacheContro
 
 router
   .route('/find')
-  .get(businessCacheController.checkCachedResults, businessController.findBusinesses);
+  .get(businessCacheController.searchCachedBusinesses, businessController.findBusinesses);
 
 router
   .route('/categories/search')

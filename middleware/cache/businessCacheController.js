@@ -1,79 +1,80 @@
 const { ConnectionTimeoutError } = require('redis');
+const { redisClient } = require('../../databases/redis');
+const {
+  set_of_all_business_categories,
+} = require('../../databases/redis/keys/business.keys');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const stringUtils = require('../../utils/string-utils');
 
 exports.searchCachedBusinessCategories = async (req, res, next) => {
+  // await redisClient.DEL('set_of_all_business_categories');
+  // return res.json(await redisClient.sMembers('set_of_all_business_categories'));
+
   let { textQuery } = req.query;
   textQuery = textQuery.toLowerCase();
 
   const cachedCategories = await businessQueries.getCachedBusinessCategories();
-  console.log('Cached categories: ', cachedCategories);
+  console.log('Currently in cache: ', cachedCategories);
 
   const searchResults = cachedCategories.filter(categ => {
-    return categ.includes(textQuery) || textQuery.includes(categ);
+    return (
+      categ.toLowerCase().startsWith(textQuery) ||
+      textQuery.startsWith(categ.toLowerCase())
+    );
   });
-  console.log('Cache Search Results: ', searchResults);
+  console.log('Search Results in cache: ', searchResults);
 
   let cacheMiss = !searchResults?.length;
   console.log('cacheMiss: ', cacheMiss ? 'miss' : 'A Hit actually');
+
   if (cacheMiss) {
     req.searchCategParams = { textQuery };
     return next();
   }
-
-  const matchingWordsFromEachCateg = searchResults
-    ?.map(categ => {
-      const words = categ.replace(',', '').split(' ');
-      const matchingWordsWithQuery = words.filter(
-        word => word.includes(textQuery) || textQuery.includes(word)
-      );
-      console.log('Words: ', matchingWordsWithQuery);
-      return matchingWordsWithQuery;
-    })
-    .flat();
-
-  const uniqueWords = [...new Set(matchingWordsFromEachCateg)];
-
-  // console.log('Check: ', searchResults);
   res.status(200).json({
     source: 'cache',
     status: 'SUCCESS',
-    results: uniqueWords.length,
-    categories: uniqueWords,
+    results: searchResults.length,
+    categories: searchResults,
   });
 };
 
-exports.checkCachedResults = async (req, res, next) => {
+exports.searchCachedBusinesses = async (req, res, next) => {
+  console.log('Reqeust Query: ', req.query);
   // return next();
   try {
-    let { textQuery, city: cityName, stateCode, limit = 100, page = 1 } = req.query;
-    [textQuery, cityName] = [textQuery.toLowerCase(), cityName.toLowerCase()];
+    let { category, city: cityName, stateCode, limit = 100, page = 1 } = req.query;
+    [category, cityName] = [category.toLowerCase(), cityName.toLowerCase()];
 
-    if (!textQuery || !cityName || !stateCode)
+    if (!category || !cityName || !stateCode)
       return res.status(200).json({ results: 0, businesses: [] });
 
-    // await redisClient.DEL('businesses_search');
+    // await redisClient.DEL('businesses_search_result');
+    // return res.json({
+    //   'In cache:': await redisClient.hGetAll('businesses_search_result'),
+    // });
 
-    const cachedResults = await businessQueries.getCachedBusinessSearchResults({
-      textQuery,
+    const searchResults = await businessQueries.getMatchingBusinessesInCache({
+      category,
       cityName,
       stateCode,
     });
-    //return res.json({ cachedResults });
+    // return res.json({ searchResults });
 
-    const cacheMiss = !cachedResults;
+    const cacheMiss = !searchResults;
     if (cacheMiss) {
-      req.businessSearchParams = { stateCode, textQuery, cityName };
+      req.businessSearchParams = { category, cityName, stateCode, limit, page };
       return next();
     }
 
-    const skip = page * limit > cachedResults.length ? 0 : page * limit;
+    const skip = page * limit > searchResults.length ? 0 : page * limit;
+    const toShow = searchResults.slice(page === 1 ? 0 : skip + 1, page * limit);
 
     res.status(200).json({
       status: 'SUCCESS',
       source: 'cache',
-      results: cachedResults.length,
-      businesses: cachedResults.slice(page === 1 ? 0 : skip + 1, page * limit),
+      results: toShow.length,
+      businesses: toShow,
     });
   } catch (err) {
     let status;

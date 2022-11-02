@@ -1,7 +1,6 @@
 const { redisClient } = require('..');
 const stringUtils = require('../../../utils/string-utils');
 const businessKeys = require('../keys/business.keys');
-const searchResultsHashKey = businessKeys.getSearchResultHashKey();
 
 exports.getCachedBusinessCategories = async () => {
   return await redisClient.sMembers(businessKeys.set_of_all_business_categories);
@@ -9,46 +8,43 @@ exports.getCachedBusinessCategories = async () => {
 
 exports.cacheBusinessCategories = async results => {
   console.log('What to cache: ', results);
-
-  await redisClient.sAdd(
-    businessKeys.set_of_all_business_categories,
-    results.map(city => city.toLowerCase())
-  );
+  await redisClient.sAdd(businessKeys.set_of_all_business_categories, results);
 };
 
 exports.cacheBusinessSearchResults = async params => {
-  const { keywords, cityName, stateCode, searchResults } = params;
-  console.log('What to cache: ', { keywords, cityName, stateCode });
+  const { keyword, cityName, stateCode, searchResults } = params;
+  console.log('What to cache: ', { keyword, cityName, stateCode });
 
   const hashSubKey = businessKeys.genBusinessResultsKey(
-    keywords.toLowerCase(),
+    keyword.toLowerCase(),
     cityName.toLowerCase(),
     stateCode.toUpperCase()
   );
-  await redisClient.hSet(searchResultsHashKey, hashSubKey, JSON.stringify(searchResults));
+
+  await redisClient.hSet(
+    businessKeys.businesses_search_result,
+    hashSubKey,
+    JSON.stringify(searchResults)
+  );
 };
 
-exports.getCachedBusinessSearchResults = async params => {
-  const { textQuery, cityName, stateCode } = params;
+exports.getMatchingBusinessesInCache = async params => {
+  const { category, cityName, stateCode } = params;
 
-  // const results = await redisClient.hGetAll(searchResultsHashKey);
-  const resultKeys = await redisClient.hKeys(searchResultsHashKey);
+  // const results = await redisClient.hGetAll(businessKeys.businesses_search_result);
+  const resultKeys = await redisClient.hKeys(businessKeys.businesses_search_result);
   console.log('Result keys:', resultKeys);
-  console.log('Searching for:', params);
+  // console.log('Searching for:', params);
 
   const matchingKey = resultKeys.find(k => {
-    const parsedResultKey = stringUtils.parseSerializedRedisKey(k);
-    console.log('parsedResultKey: ', parsedResultKey);
+    const parsedKey = stringUtils.parseSerializedRedisKey(k);
+    console.log('parsedKey: ', parsedKey);
 
-    if (cityName.toLowerCase() !== parsedResultKey.get('city')) {
-      console.log('city: False');
-      return false;
-    }
-    if (stateCode !== parsedResultKey.get('stateCode').toUpperCase()) {
-      console.log('stateCode: False');
-      return false;
-    }
-    return parsedResultKey.get('keywords').includes(textQuery);
+    if (cityName !== parsedKey.get('city')) return false;
+    if (stateCode !== parsedKey.get('stateCode').toUpperCase()) return false;
+
+    // return sic8keyword.startsWith(category) || category.startsWith(sic8keyword);
+    return parsedKey.get('keyword') === category;
   });
 
   console.log('Matching key: ', matchingKey);
@@ -56,5 +52,7 @@ exports.getCachedBusinessSearchResults = async params => {
   const cacheMiss = !matchingKey;
   if (cacheMiss) return null;
 
-  return JSON.parse(await redisClient.hGet(searchResultsHashKey, matchingKey));
+  return JSON.parse(
+    await redisClient.hGet(businessKeys.businesses_search_result, matchingKey)
+  );
 };

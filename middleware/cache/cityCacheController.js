@@ -3,12 +3,11 @@ const cityQueries = require('../../databases/redis/queries/city.queries');
 const stringUtils = require('../../utils/string-utils');
 
 exports.searchCachedCities = async (req, res, next) => {
-  // await redisClient.del('set_of_all_cities');
-  // return res.json({
-  //   'set_of_all_cities: ': await redisClient.get('set_of_all_cities'),
-  // });
-
   try {
+    // await redisClient.del('set_of_all_cities');
+    // return res.json({
+    //   'set_of_all_cities: ': await redisClient.sMembers('set_of_all_cities'),
+    // });
     let { textQuery } = req.query;
 
     if (textQuery.length < 2) {
