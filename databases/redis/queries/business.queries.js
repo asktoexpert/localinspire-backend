@@ -8,6 +8,7 @@ exports.getCachedBusinessCategories = async () => {
 
 exports.cacheBusinessCategories = async results => {
   console.log('What to cache: ', results);
+  if (!results.length) return;
   await redisClient.sAdd(businessKeys.set_of_all_business_categories, results);
 };
 

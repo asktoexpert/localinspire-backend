@@ -17,7 +17,7 @@ exports.searchBusinessCategories = async function (req, res, next) {
     });
   };
   // sortResultsByLeastWordsFirst();
-  await businessQueries.cacheBusinessCategories(categories);
+  if (categories.length) await businessQueries.cacheBusinessCategories(categories);
 
   res.status(200).json({
     status: 'SUCCESS',

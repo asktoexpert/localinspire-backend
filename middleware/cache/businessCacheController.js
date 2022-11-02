@@ -21,6 +21,7 @@ exports.searchCachedBusinessCategories = async (req, res, next) => {
       categ.toLowerCase().startsWith(textQuery) ||
       textQuery.startsWith(categ.toLowerCase())
     );
+    // categ.toLowerCase() === textQuery.toLowerCase();
   });
   console.log('Search Results in cache: ', searchResults);
 
