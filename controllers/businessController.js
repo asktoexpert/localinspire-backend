@@ -57,6 +57,7 @@ exports.findBusinesses = async function (req, res, next) {
       });
     }
 
+    console.log('Results to send: ', businesses);
     res.status(200).json({
       status: 'SUCCESS',
       source: 'db',
