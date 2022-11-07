@@ -4,6 +4,7 @@ const {
   set_of_all_business_categories,
 } = require('../../databases/redis/keys/business.keys');
 const businessQueries = require('../../databases/redis/queries/business.queries');
+const arrayUtils = require('../../utils/arrayUtils');
 const stringUtils = require('../../utils/string-utils');
 
 exports.searchCachedBusinessCategories = async (req, res, next) => {
@@ -16,16 +17,16 @@ exports.searchCachedBusinessCategories = async (req, res, next) => {
   const cachedCategories = await businessQueries.getCachedBusinessCategories();
   console.log('Currently in cache: ', cachedCategories);
 
-  const searchResults = cachedCategories.filter(categ => {
+  const cacheResults = cachedCategories.filter(categ => {
     return (
       categ.toLowerCase().startsWith(textQuery) ||
       textQuery.startsWith(categ.toLowerCase())
     );
     // categ.toLowerCase() === textQuery.toLowerCase();
   });
-  console.log('Search Results in cache: ', searchResults);
+  console.log('Search Results in cache: ', cacheResults);
 
-  let cacheMiss = !searchResults?.length;
+  let cacheMiss = !cacheResults?.length;
   console.log('cacheMiss: ', cacheMiss ? 'miss' : 'A Hit actually');
 
   if (cacheMiss) {
@@ -35,18 +36,23 @@ exports.searchCachedBusinessCategories = async (req, res, next) => {
   res.status(200).json({
     source: 'cache',
     status: 'SUCCESS',
-    results: searchResults.length,
-    categories: searchResults,
+    results: cacheResults.length,
+    categories: cacheResults,
   });
 };
 
-exports.searchCachedBusinesses = async (req, res, next) => {
+exports.findCachedBusinesses = async (req, res, next) => {
   console.log('Reqeust Query: ', req.query);
   // return next();
   try {
-    let { category, city: cityName, stateCode, limit = 100, page = 1 } = req.query;
-    [category, cityName] = [category.toLowerCase(), cityName.toLowerCase()];
+    let { category, city: cityName, stateCode, page = 1, limit = 50 } = req.query;
 
+    [category, cityName, page, limit] = [
+      category.toLowerCase(),
+      cityName.toLowerCase(),
+      +page,
+      +limit,
+    ];
     if (!category || !cityName || !stateCode)
       return res.status(200).json({ results: 0, businesses: [] });
 
@@ -61,21 +67,24 @@ exports.searchCachedBusinesses = async (req, res, next) => {
       stateCode,
     });
     // return res.json({ searchResults });
-
     const cacheMiss = !searchResults;
     if (cacheMiss) {
-      req.businessSearchParams = { category, cityName, stateCode, limit, page };
+      req.businessSearchParams = { category, cityName, stateCode, page, limit };
       return next();
     }
 
-    const skip = page * limit > searchResults.length ? 0 : page * limit;
-    const toShow = searchResults.slice(page === 1 ? 0 : skip + 1, page * limit);
+    const paginatedResults = await arrayUtils.paginate({
+      array: searchResults,
+      page,
+      limit,
+    });
 
     res.status(200).json({
       status: 'SUCCESS',
       source: 'cache',
-      results: toShow.length,
-      businesses: toShow,
+      results: paginatedResults.length,
+      all: searchResults.length,
+      businesses: paginatedResults,
     });
   } catch (err) {
     let status;

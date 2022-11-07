@@ -6,7 +6,7 @@ exports.searchCities = async (req, res, next) => {
 
   try {
     const cities = await Business.find({
-      city: { $regex: `${textQuery}`, $options: 'i' },
+      city: { $regex: `^${textQuery}.*`, $options: 'i' },
     }).distinct('city');
 
     if (cities.length) await cityQueries.cacheCitySearchResults(cities);

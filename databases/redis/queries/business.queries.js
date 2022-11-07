@@ -39,16 +39,14 @@ exports.getMatchingBusinessesInCache = async params => {
 
   const matchingKey = resultKeys.find(k => {
     const parsedKey = stringUtils.parseSerializedRedisKey(k);
-    console.log('parsedKey: ', parsedKey);
+    // console.log('parsedKey: ', parsedKey);
 
     if (cityName !== parsedKey.get('city')) return false;
     if (stateCode !== parsedKey.get('stateCode').toUpperCase()) return false;
-
-    // return sic8keyword.startsWith(category) || category.startsWith(sic8keyword);
     return parsedKey.get('keyword') === category;
   });
 
-  console.log('Matching key: ', matchingKey);
+  console.log('Matching key: ', matchingKey || null);
 
   const cacheMiss = !matchingKey;
   if (cacheMiss) return null;
