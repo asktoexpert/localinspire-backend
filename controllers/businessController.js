@@ -47,8 +47,8 @@ exports.findBusinesses = async function (req, res, next) {
     // Store in Redis if there are search results
     if (businesses.length) {
       // Get search keyword based on search query.
-      // const keyword = !!businesses.length && businesses?.[0]?.SIC8Category;
-      // console.log('searchKeyWord: ', keyword);
+      const keyword = !!businesses.length && businesses?.[0]?.SIC8Category;
+      console.log('searchKeyWord: ', keyword);
       await businessQueries.cacheBusinessbusinesses({
         keyword,
         cityName,
