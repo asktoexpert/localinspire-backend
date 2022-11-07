@@ -49,12 +49,12 @@ exports.findBusinesses = async function (req, res, next) {
       // Get search keyword based on search query.
       // const keyword = !!businesses.length && businesses?.[0]?.SIC8Category;
       // console.log('searchKeyWord: ', keyword);
-      // await businessQueries.cacheBusinessbusinesses({
-      //   keyword,
-      //   cityName,
-      //   stateCode,
-      //   businesses,
-      // });
+      await businessQueries.cacheBusinessbusinesses({
+        keyword,
+        cityName,
+        stateCode,
+        businesses,
+      });
     }
 
     res.status(200).json({
