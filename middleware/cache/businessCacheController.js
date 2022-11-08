@@ -83,7 +83,7 @@ exports.findCachedBusinesses = async (req, res, next) => {
       status: 'SUCCESS',
       source: 'cache',
       results: paginatedResults.length,
-      all: searchResults.length,
+      allResults: searchResults.length,
       businesses: paginatedResults,
     });
   } catch (err) {

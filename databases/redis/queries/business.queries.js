@@ -13,7 +13,7 @@ exports.cacheBusinessCategories = async results => {
 };
 
 exports.cacheBusinessSearchResults = async params => {
-  const { keyword, cityName, stateCode, searchResults } = params;
+  const { keyword, cityName, stateCode, businesses } = params;
   console.log('What to cache: ', { keyword, cityName, stateCode });
 
   const hashSubKey = businessKeys.genBusinessResultsKey(
@@ -25,7 +25,7 @@ exports.cacheBusinessSearchResults = async params => {
   await redisClient.hSet(
     businessKeys.businesses_search_result,
     hashSubKey,
-    JSON.stringify(searchResults)
+    JSON.stringify(businesses)
   );
 };
 

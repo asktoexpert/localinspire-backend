@@ -32,8 +32,8 @@ exports.findBusinesses = async function (req, res, next) {
   try {
     // Find businesses whose fields match the query
     const businesses = await Business.find({
-      SIC8Category: { $regex: `^${category}`, $options: 'i' },
-      // SIC8Category: { $regex: `^${category}.*`, $options: 'i' },
+      // SIC8Category: { $regex: `${category}`, $options: 'i' },
+      SIC8Category: /^test$/i,
       city: stringUtils.toTitleCase(cityName),
       stateCode: stateCode.toUpperCase(),
     });
@@ -49,7 +49,7 @@ exports.findBusinesses = async function (req, res, next) {
       // Get search keyword based on search query.
       const keyword = !!businesses.length && businesses?.[0]?.SIC8Category;
       console.log('searchKeyWord: ', keyword);
-      await businessQueries.cacheBusinessbusinesses({
+      await businessQueries.cacheBusinessSearchResults({
         keyword,
         cityName,
         stateCode,
@@ -57,7 +57,6 @@ exports.findBusinesses = async function (req, res, next) {
       });
     }
 
-    console.log('Results to send: ', businesses);
     res.status(200).json({
       status: 'SUCCESS',
       source: 'db',
