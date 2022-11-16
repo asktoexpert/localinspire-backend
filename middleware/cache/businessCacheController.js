@@ -7,7 +7,7 @@ const businessQueries = require('../../databases/redis/queries/business.queries'
 const arrayUtils = require('../../utils/arrayUtils');
 const stringUtils = require('../../utils/string-utils');
 
-exports.searchCachedBusinessCategories = async (req, res, next) => {
+exports.searchCachedBusinessCategories = async function (req, res, next) {
   // await redisClient.DEL('set_of_all_business_categories');
   // return res.json(await redisClient.sMembers('set_of_all_business_categories'));
 
@@ -41,11 +41,11 @@ exports.searchCachedBusinessCategories = async (req, res, next) => {
   });
 };
 
-exports.findCachedBusinesses = async (req, res, next) => {
-  console.log('Reqeust Query: ', req.query);
+exports.findCachedBusinesses = async function (req, res, next) {
+  console.log('Reqeust query in main controller: ', req.query);
   // return next();
   try {
-    let { category, city: cityName, stateCode, page = 1, limit = 50 } = req.query;
+    let { category, city: cityName, stateCode, page = 1, limit = 20 } = req.query;
 
     [category, cityName, page, limit] = [
       category.toLowerCase(),
@@ -54,11 +54,15 @@ exports.findCachedBusinesses = async (req, res, next) => {
       +limit,
     ];
     if (!category || !cityName || !stateCode)
-      return res.status(200).json({ results: 0, businesses: [] });
+      return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });
 
     // await redisClient.DEL('businesses_search_result');
+    // await redisClient.hDel(
+    //   'businesses_search_result',
+    //   'results:keyword=carpenters|city=anchorage|stateCode=AK'
+    // );
     // return res.json({
-    //   'In cache:': await redisClient.hGetAll('businesses_search_result'),
+    //   'In cache:': await redisClient.hKeys('businesses_search_result'),
     // });
 
     const searchResults = await businessQueries.getMatchingBusinessesInCache({

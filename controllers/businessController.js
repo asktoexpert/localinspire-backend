@@ -33,7 +33,8 @@ exports.findBusinesses = async function (req, res, next) {
     // Find businesses whose fields match the query
     const businesses = await Business.find({
       // SIC8Category: { $regex: `${category}`, $options: 'i' },
-      SIC8Category: /^test$/i,
+      // SIC8Category: { $regex: `/^${category}`, $options: 'i' },
+      SIC8Category: stringUtils.toTitleCase(category),
       city: stringUtils.toTitleCase(cityName),
       stateCode: stateCode.toUpperCase(),
     });

@@ -14,7 +14,12 @@ exports.cacheBusinessCategories = async results => {
 
 exports.cacheBusinessSearchResults = async params => {
   const { keyword, cityName, stateCode, businesses } = params;
-  console.log('What to cache: ', { keyword, cityName, stateCode });
+
+  console.log('What to cache: ', {
+    keyword: keyword.toLowerCase(),
+    cityName: cityName.toLowerCase(),
+    stateCode: stateCode.toUpperCase(),
+  });
 
   const hashSubKey = businessKeys.genBusinessResultsKey(
     keyword.toLowerCase(),
@@ -34,15 +39,15 @@ exports.getMatchingBusinessesInCache = async params => {
 
   // const results = await redisClient.hGetAll(businessKeys.businesses_search_result);
   const resultKeys = await redisClient.hKeys(businessKeys.businesses_search_result);
-  console.log('Result keys:', resultKeys);
-  // console.log('Searching for:', params);
+  console.log('Keys in cache:', resultKeys);
+  console.log('In first controller:', params);
 
   const matchingKey = resultKeys.find(k => {
     const parsedKey = stringUtils.parseSerializedRedisKey(k);
     // console.log('parsedKey: ', parsedKey);
 
     if (cityName !== parsedKey.get('city')) return false;
-    if (stateCode !== parsedKey.get('stateCode').toUpperCase()) return false;
+    if (stateCode.toUpperCase() !== parsedKey.get('stateCode')) return false;
     return parsedKey.get('keyword') === category;
   });
 
