@@ -1,22 +1,33 @@
 const request = require('request');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const uuid = require('uuid');
+
+exports.signToken = (userId, userEmail) => {
+  const token = jwt.sign({ id: userId, email: userEmail }, process.env.JWT_SECRET, {
+    expiresIn: '1d',
+  });
+  return token;
+};
+
+exports.genRefreshToken = () => uuid.v4();
 
 const googleVerify = async (token, clientUser) => {
   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
 
   return new Promise((resolve, reject) => {
-    request(url, (err, res, body) => {
+    const callback = (err, res, body) => {
       if (err) reject(err);
-
       const result = JSON.parse(body);
-      console.log('Result: ', result);
+      console.log('Google Result: ', result);
 
       if (result.error) reject({ success: false });
-
-      if (result.user_id === clientUser.id && result.email === clientUser.email) {
+      if (result.user_id === clientUser.id && result.email === clientUser.email)
         resolve({ success: true });
-      }
       reject({ success: false });
-    });
+    };
+
+    request(url, callback);
   });
 };
 
@@ -27,7 +38,7 @@ const facebookVerify = async (token, clientUser) => {
       if (err) reject(err);
 
       const result = JSON.parse(body);
-      console.log('Result: ', result);
+      console.log('Facebook Result: ', result);
 
       if (result.error) reject(result);
 
@@ -60,22 +71,23 @@ exports.verifyOauthToken = async (req, res, next) => {
   console.log(provider, clientUser, account);
 
   try {
-    if (provider === 'google') {
-      const { success } = await googleVerify(account.access_token, clientUser);
-      if (success) {
-        req.verifiedUser = clientUser;
-        return next();
+    switch (provider) {
+      case 'google': {
+        const { success } = await googleVerify(account.access_token, clientUser);
+        if (success) {
+          req.verifiedUser = clientUser;
+          return next();
+        }
+        return res.status(400).json({ status: 'FAIL' });
       }
-      return res.status(400).json({ status: 'FAIL' });
-    }
-
-    if (provider === 'facebook') {
-      const { success } = await facebookVerify(account.access_token, clientUser);
-      if (success) {
-        req.verifiedUser = clientUser;
-        return next();
+      case 'facebook': {
+        const { success } = await facebookVerify(account.access_token, clientUser);
+        if (success) {
+          req.verifiedUser = clientUser;
+          return next();
+        }
+        return res.status(400).json({ status: 'FAIL' });
       }
-      return res.status(400).json({ status: 'FAIL' });
     }
   } catch (err) {
     console.log('ERR: ', err);

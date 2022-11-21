@@ -10,35 +10,39 @@ const stringUtils = require('../../utils/string-utils');
 exports.searchCachedBusinessCategories = async function (req, res, next) {
   // await redisClient.DEL('set_of_all_business_categories');
   // return res.json(await redisClient.sMembers('set_of_all_business_categories'));
-
   let { textQuery } = req.query;
   textQuery = textQuery.toLowerCase();
+  // req.searchCategParams = { textQuery };
+  // return next();
 
-  const cachedCategories = await businessQueries.getCachedBusinessCategories();
-  console.log('Currently in cache: ', cachedCategories);
+  try {
+    const cachedCategories = await businessQueries.getCachedBusinessCategories();
+    console.log('Currently in cache: ', cachedCategories);
 
-  const cacheResults = cachedCategories.filter(categ => {
-    return (
-      categ.toLowerCase().startsWith(textQuery) ||
-      textQuery.startsWith(categ.toLowerCase())
-    );
-    // categ.toLowerCase() === textQuery.toLowerCase();
-  });
-  console.log('Search Results in cache: ', cacheResults);
+    const cacheResults = cachedCategories.filter(categ => {
+      return (
+        categ.toLowerCase().startsWith(textQuery) ||
+        textQuery.startsWith(categ.toLowerCase())
+      );
+    });
+    console.log('Matching Results in cache: ', cacheResults);
 
-  let cacheMiss = !cacheResults?.length;
-  console.log('cacheMiss: ', cacheMiss ? 'miss' : 'A Hit actually');
+    let cacheMiss = !cacheResults?.length;
+    console.log('cacheMiss: ', cacheMiss ? 'miss' : 'A Hit actually');
 
-  if (cacheMiss) {
-    req.searchCategParams = { textQuery };
-    return next();
+    if (cacheMiss) {
+      req.searchCategParams = { textQuery };
+      return next();
+    }
+    res.status(200).json({
+      source: 'cache',
+      status: 'SUCCESS',
+      results: cacheResults.length,
+      categories: cacheResults,
+    });
+  } catch (err) {
+    res.status(400).json({ status: 'ERROR', results: 0, categories: [] });
   }
-  res.status(200).json({
-    source: 'cache',
-    status: 'SUCCESS',
-    results: cacheResults.length,
-    categories: cacheResults,
-  });
 };
 
 exports.findCachedBusinesses = async function (req, res, next) {

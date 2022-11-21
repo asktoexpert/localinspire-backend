@@ -1,36 +1,24 @@
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const uuid = require('uuid');
-const bcrypt = require('bcryptjs');
 const stringUtils = require('../utils/string-utils');
-
-const signToken = (userId, userEmail) => {
-  const token = jwt.sign({ id: userId, email: userEmail }, process.env.JWT_SECRET, {
-    expiresIn: '1d',
-  });
-  return token;
-};
-
-const getRefreshToken = () => uuid.v4();
+const authController = require('../middleware/authController');
 
 exports.signup = async function (req, res) {
   try {
-    const userWithEmailExists = await User.findOne({ email: req.body.email });
-    if (userWithEmailExists) {
+    const emailUsed = !!(await User.findOne({ email: req.body.email }));
+    if (emailUsed)
       return res.status(400).json({
         status: 'FAIL',
         reason: 'USER_ALREADY_EXISTS',
         msg: 'A user with this email already exists',
       });
-    }
 
     const newUser = await User.create({ ...req.body, signedUpWith: 'credentials' });
     res.status(201).json({
       status: 'SUCCESS',
       data: {
         ...newUser.toObject(),
-        accessToken: signToken(newUser._id, newUser.email),
-        rft: getRefreshToken(),
+        accessToken: authController.signToken(newUser._id, newUser.email),
+        rft: authController.genRefreshToken(),
       },
     });
   } catch (err) {
@@ -40,7 +28,7 @@ exports.signup = async function (req, res) {
 
 exports.login = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email }).select('+password');
+    let user = await User.findOne({ email: req.body.email }).select('+password');
 
     if (!user || !(await user.verifyPassword(req.body.password, user.password))) {
       return res.status(400).json({
@@ -55,18 +43,21 @@ exports.login = async (req, res) => {
       return res.status(400).json({
         status: 'ERROR',
         reason: 'WRONG_LOGIN_STRATEGY',
-        msg: `This user account can only be logged in with ${stringUtils.toTitleCase(
+        msg: `This account can only be logged in with ${stringUtils.toTitleCase(
           user.signedUpWith
         )}`,
       });
     }
 
+    user = user.toJSON();
+    delete user.password;
+
     res.status(201).json({
       status: 'SUCCESS',
       data: {
-        ...user.toObject(),
-        accessToken: signToken(user._id, user.email),
-        rft: getRefreshToken(),
+        ...user,
+        accessToken: authController.signToken(user._id, user.email),
+        rft: authController.genRefreshToken(),
       },
     });
   } catch (err) {
@@ -92,8 +83,8 @@ exports.oAuth = async function (req, res, next) {
         username: verifiedUser.name,
         email: verifiedUser.email,
         currentlyLoggedInWith: req.params.provider,
-        accessToken: signToken(user._id, user.email),
-        rft: getRefreshToken(),
+        accessToken: authController.signToken(user._id, user.email),
+        rft: authController.genRefreshToken(),
       },
     });
   } catch (err) {

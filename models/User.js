@@ -38,7 +38,7 @@ userSchema.methods.verifyPassword = async function (passwordInput, hashedPasswor
 };
 
 userSchema.statics.encryptPassword = async function (password) {
-  return await bcrypt.hash(password, 12);
+  return await bcrypt.hash(password, 11);
 };
 
 userSchema.pre('save', async function (next) {

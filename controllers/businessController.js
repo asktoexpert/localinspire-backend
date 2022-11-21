@@ -6,19 +6,35 @@ const arrayUtils = require('../utils/arrayUtils');
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
   console.log('Query in main controller: ', textQuery);
+  // const categories = await Business.find({
+  //   SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' },
+  // });
+  try {
+    const [result] = await Business.aggregate([
+      { $match: { SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' } } },
+      { $project: { SIC8Category: 1 } },
+      { $group: { categories: { $addToSet: '$SIC8Category' }, _id: null } },
+      { $project: { _id: 0 } },
+    ]);
 
-  const categories = await Business.find({
-    SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' },
-  }).distinct('SIC8Category');
+    if (!result?.categories) throw new Error('');
 
-  if (categories.length) await businessQueries.cacheBusinessCategories(categories);
+    const { categories } = result;
+    if (categories.length) await businessQueries.cacheBusinessCategories(categories);
 
-  res.status(200).json({
-    status: 'SUCCESS',
-    source: 'db',
-    results: categories.length,
-    categories,
-  });
+    return res.status(200).json({
+      status: 'SUCCESS',
+      source: 'db',
+      results: categories.length,
+      categories: categories,
+    });
+  } catch (err) {
+    console.log('In try-CATCH: ', err);
+    return res.status(200).json({
+      status: 'ERROR',
+      source: 'db',
+    });
+  }
 };
 
 // Find businesses based on location coords & matching coordinates
