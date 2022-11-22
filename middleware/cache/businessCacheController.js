@@ -47,16 +47,17 @@ exports.searchCachedBusinessCategories = async function (req, res, next) {
 
 exports.findCachedBusinesses = async function (req, res, next) {
   console.log('Reqeust query in main controller: ', req.query);
+  let { category, city: cityName, stateCode, page = 1, limit = 20 } = req.query;
+
+  [category, cityName, page, limit] = [
+    category.toLowerCase(),
+    cityName.toLowerCase(),
+    +page,
+    +limit,
+  ];
+  // req.businessSearchParams = { category, cityName, stateCode, page, limit };
   // return next();
   try {
-    let { category, city: cityName, stateCode, page = 1, limit = 20 } = req.query;
-
-    [category, cityName, page, limit] = [
-      category.toLowerCase(),
-      cityName.toLowerCase(),
-      +page,
-      +limit,
-    ];
     if (!category || !cityName || !stateCode)
       return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });
 

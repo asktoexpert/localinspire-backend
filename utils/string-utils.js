@@ -31,3 +31,8 @@ exports.parseSerializedRedisKey = key => {
   const keyValuePairs = params.split('|').map(pair => pair.split('='));
   return new Map(keyValuePairs);
 };
+
+exports.getCommonWords = function (str) {
+  const refWords = this.str.split(' ');
+  return str.split(' ').filter(word => refWords.includes(word));
+};

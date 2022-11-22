@@ -6,9 +6,7 @@ const arrayUtils = require('../utils/arrayUtils');
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
   console.log('Query in main controller: ', textQuery);
-  // const categories = await Business.find({
-  //   SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' },
-  // });
+
   try {
     const [result] = await Business.aggregate([
       { $match: { SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' } } },
@@ -48,14 +46,12 @@ exports.findBusinesses = async function (req, res, next) {
   try {
     // Find businesses whose fields match the query
     const businesses = await Business.find({
-      // SIC8Category: { $regex: `${category}`, $options: 'i' },
-      // SIC8Category: { $regex: `/^${category}`, $options: 'i' },
-      SIC8Category: stringUtils.toTitleCase(category),
+      SIC8Category: { $regex: `${category}`, $options: 'i' },
       city: stringUtils.toTitleCase(cityName),
       stateCode: stateCode.toUpperCase(),
     });
 
-    const paginatedResults = await arrayUtils.paginate({
+    const paginatedBusinesses = await arrayUtils.paginate({
       array: businesses,
       page,
       limit,
@@ -63,11 +59,8 @@ exports.findBusinesses = async function (req, res, next) {
 
     // Store in Redis if there are search results
     if (businesses.length) {
-      // Get search keyword based on search query.
-      const keyword = !!businesses.length && businesses?.[0]?.SIC8Category;
-      console.log('searchKeyWord: ', keyword);
       await businessQueries.cacheBusinessSearchResults({
-        keyword,
+        keyword: category,
         cityName,
         stateCode,
         businesses,
@@ -77,9 +70,9 @@ exports.findBusinesses = async function (req, res, next) {
     res.status(200).json({
       status: 'SUCCESS',
       source: 'db',
-      results: paginatedResults.length,
+      results: paginatedBusinesses.length,
       allResults: businesses.length,
-      businesses: paginatedResults,
+      businesses: paginatedBusinesses,
     });
   } catch (err) {
     console.log('Error -> ', err);
