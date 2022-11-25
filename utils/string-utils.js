@@ -36,3 +36,8 @@ exports.getCommonWords = function (str) {
   const refWords = this.str.split(' ');
   return str.split(' ').filter(word => refWords.includes(word));
 };
+
+exports.weaklyEncryptEmail = email => {
+  const emailPortionToBeHidden = email.slice(3, email.indexOf('@'));
+  return email.replace(emailPortionToBeHidden, '*'.repeat(emailPortionToBeHidden.length));
+};

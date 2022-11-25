@@ -1,18 +1,24 @@
 const User = require('../models/User');
 const stringUtils = require('../utils/string-utils');
 const authController = require('../middleware/authController');
+const authQueries = require('../databases/redis/queries/auth.queries');
+const { redisClient } = require('../databases/redis');
 
-exports.signup = async function (req, res) {
+exports.signupWithCredentials = async function (req, res) {
   try {
-    const emailUsed = !!(await User.findOne({ email: req.body.email }));
-    if (emailUsed)
+    if (req.emailAreadyInUse)
       return res.status(400).json({
         status: 'FAIL',
-        reason: 'USER_ALREADY_EXISTS',
+        reason: 'EMAIL_IN_USE',
         msg: 'A user with this email already exists',
       });
 
-    const newUser = await User.create({ ...req.body, signedUpWith: 'credentials' });
+    const newUser = await User.create({
+      ...req.body,
+      signedUpWith: 'credentials',
+      emailVerified: true,
+    });
+
     res.status(201).json({
       status: 'SUCCESS',
       data: {
@@ -26,7 +32,7 @@ exports.signup = async function (req, res) {
   }
 };
 
-exports.login = async (req, res) => {
+exports.loginWithCredentials = async (req, res) => {
   try {
     let user = await User.findOne({ email: req.body.email }).select('+password');
 
@@ -61,7 +67,8 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.log(err);
+    console.log('Error: ', err);
+    res.status(400).json({ error: err });
   }
 };
 
@@ -89,6 +96,24 @@ exports.oAuth = async function (req, res, next) {
     });
   } catch (err) {
     console.log('UnKnown erroR: ', err);
+    res.status(400).json({ error: err });
+  }
+};
+
+exports.forgotPassword = async function (req, res) {
+  const { email, newPassword } = req.body;
+  try {
+    const user = await User.findUserByEmail(email);
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      msg: 'You have successfully changed your password.',
+      data: { user },
+    });
+  } catch (err) {
+    console.log('Error: ', err);
     res.status(400).json({ error: err });
   }
 };

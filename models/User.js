@@ -15,6 +15,7 @@ const userSchema = mongoose.Schema(
       unique: true,
       validate: [validator.isEmail, 'Please enter a valid email'],
     },
+    emailVerified: Boolean,
     password: {
       type: String,
       required: [false, 'Please provide a password'],
@@ -32,6 +33,15 @@ const userSchema = mongoose.Schema(
     },
   }
 );
+
+userSchema.statics.findUserByEmail = async email => {
+  return await User.findOne({ email });
+};
+
+userSchema.statics.isEmailAlreadyInUse = async email => {
+  console.log('Exisiting user: ', !!(await User.findOne({ email })));
+  return !!(await User.findOne({ email }));
+};
 
 userSchema.methods.verifyPassword = async function (passwordInput, hashedPassword) {
   return await bcrypt.compare(passwordInput, hashedPassword);

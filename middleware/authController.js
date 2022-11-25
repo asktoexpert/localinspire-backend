@@ -1,7 +1,14 @@
 const request = require('request');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const uuid = require('uuid');
+const authKeys = require('../databases/redis/keys/auth.keys');
+const authQueries = require('../databases/redis/queries/auth.queries');
+const { redisClient } = require('../databases/redis');
+const EmailService = require('../services/emailService');
+const User = require('../models/User');
+const stringUtils = require('../utils/string-utils');
+
+// const { redisClient } = require('../databases/redis');
 
 exports.signToken = (userId, userEmail) => {
   const token = jwt.sign({ id: userId, email: userEmail }, process.env.JWT_SECRET, {
@@ -10,7 +17,39 @@ exports.signToken = (userId, userEmail) => {
   return token;
 };
 
-exports.genRefreshToken = () => uuid.v4();
+exports.genRefreshToken = () => {
+  return uuid.v4();
+};
+
+const genVerificationCode = async () => {
+  const shuffle = arr => {
+    for (
+      let j, x, i = arr.length;
+      i;
+      j = Math.floor(Math.random() * i), x = arr[--i], arr[i] = arr[j], arr[j] = x
+    );
+    return arr;
+  };
+  const genRandom4Digits = () => {
+    const digits = '123456789'.split('');
+    const first = shuffle(digits).pop();
+    digits.push('0');
+    return parseInt(first + shuffle(digits).join('').substring(0, 3), 10);
+  };
+  return Promise.resolve(genRandom4Digits());
+};
+
+const startNewEmailVerification = async function (userEmail) {
+  const newCode = await genVerificationCode();
+  console.log('Generated new code: ', newCode);
+  await authQueries.saveEmailVerification(userEmail, newCode + '-' + 'unverified');
+
+  // Send code to email
+  const feedback = await EmailService.sendEmailVerificationCode(userEmail, newCode);
+  console.log('Message sent: ', feedback);
+
+  return { feedback, newCode };
+};
 
 const googleVerify = async (token, clientUser) => {
   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
@@ -93,4 +132,85 @@ exports.verifyOauthToken = async (req, res, next) => {
     console.log('ERR: ', err);
     res.status(400).json(err);
   }
+};
+
+const verifyEmail = async (email, verificationCode, res, next) => {
+  // console.log('Req query: ', req.query);
+  try {
+    console.log({ allVerifs: await redisClient.hGetAll('email_verification_codes') });
+
+    const noCodeProvided =
+      !verificationCode || ['undefined', 'null'].includes(verificationCode);
+    console.log({ noCodeProvided });
+
+    const cachedCode = await authQueries.getCachedEmailVerificationCode(email);
+    console.log({ cachedCode });
+
+    const isYetToVerifyCode = cachedCode?.includes('unverified');
+    const isRequestingVerificationCode =
+      cachedCode === null || (isYetToVerifyCode && noCodeProvided);
+
+    if (isRequestingVerificationCode) {
+      const { feedback, newCode } = await startNewEmailVerification(email);
+      console.log('Generated code: ', newCode);
+      if (!feedback?.messageId) return;
+
+      return res.status(400).json({
+        status: 'FAIL',
+        reason: 'EMAIL_NOT_VERIFIED',
+        msg: `Please check your email. We just sent a verification code to ${stringUtils.weaklyEncryptEmail(
+          email
+        )}`,
+      });
+    }
+
+    if (verificationCode === cachedCode.replace('-unverified', '')) {
+      await authQueries.removeEmailVerification(email);
+      return next();
+    } else {
+      return res.status(400).json({
+        status: 'FAIL',
+        reason: 'WRONG_CODE',
+        msg: 'You have entered a wrong code',
+      });
+    }
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: 'ERROR',
+      msg: 'Sorry, something wrong has happened',
+      error: err,
+    });
+  }
+};
+
+// Email Verification Middleware
+exports.verifyEmailForCredentialsSignup = async function (req, res, next) {
+  // await redisClient.DEL(authKeys.email_verification_codes);
+  // return res.json({
+  //   emailVerifications: await redisClient.hKeys(authKeys.email_verification_codes),
+  // });
+  const { email } = req.body;
+
+  if (await User.isEmailAlreadyInUse(email)) {
+    req.emailAreadyInUse = true;
+    return next();
+  }
+  const { verification_code: verificationCode } = req.query;
+  verifyEmail(email, verificationCode, res, next);
+};
+
+exports.verifyEmailForForgotPassword = async function (req, res, next) {
+  const { verification_code: verificationCode } = req.query;
+  const { email } = req.body;
+
+  if (!(await User.isEmailAlreadyInUse(email))) {
+    return res.status(400).json({
+      status: 'FAIL',
+      reason: 'INVALID_EMAIL',
+      msg: 'You entered a wrong email.',
+    });
+  }
+  verifyEmail(email, verificationCode, res, next);
 };
