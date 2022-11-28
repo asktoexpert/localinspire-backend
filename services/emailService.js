@@ -39,7 +39,7 @@ class EmailService {
     const options = {
       from: 'Local Inspire',
       to: email,
-      subject: 'Verify your Email',
+      subject: 'Confirm your Account on Local Inspire',
       html: `<p>Please click the link below to confirm your account.</p><br/>${link}`,
     };
   }
