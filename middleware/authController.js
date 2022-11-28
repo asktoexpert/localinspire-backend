@@ -21,7 +21,7 @@ exports.genRefreshToken = () => {
   return uuid.v4();
 };
 
-const genVerificationCode = async () => {
+exports.genVerificationCode = async () => {
   const shuffle = arr => {
     for (
       let j, x, i = arr.length;

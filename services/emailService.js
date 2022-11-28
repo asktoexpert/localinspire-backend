@@ -23,6 +23,26 @@ class EmailService {
     const feedback = await this.#transporter.sendMail(options);
     return feedback;
   }
+
+  async sendEmailVerificationLinkForPasswordReset(email, link) {
+    const options = {
+      from: 'Local Inspire',
+      to: email,
+      subject: 'Verify your Email',
+      html: `<p>Please click the link below to reset your password.</p><br/>${link}`,
+    };
+    const feedback = await this.#transporter.sendMail(options);
+    return feedback;
+  }
+
+  async sendAccountConfirmationRequestEmail(email, link) {
+    const options = {
+      from: 'Local Inspire',
+      to: email,
+      subject: 'Verify your Email',
+      html: `<p>Please click the link below to confirm your account.</p><br/>${link}`,
+    };
+  }
 }
 
 module.exports = new EmailService();

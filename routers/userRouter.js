@@ -8,20 +8,17 @@ router
   .route('/login')
   .post(authController.verifyCredentials, userController.loginWithCredentials);
 
-router
-  .route('/signup')
-  .post(
-    authController.verifyCredentials,
-    authController.verifyEmailForCredentialsSignup,
-    userController.signupWithCredentials
-  );
+router.route('/signup').post(
+  authController.verifyCredentials,
+  // authController.verifyEmailForCredentialsSignup,
+  userController.signupWithCredentials
+);
 
-router
-  .route('/forgot-password')
-  .post(authController.verifyEmailForForgotPassword, userController.forgotPassword);
+router.route('/forgot-password').get(userController.forgotPassword);
+router.route('/reset-password').post(userController.resetPassword);
+router.route('/confirm-account').get(userController.confirmAccount);
+// router.route('/:email/status').get(userController.getUserEmailVerifiedStatus);
 
-router
-  .route('/oauth/:provider')
-  .post(authController.verifyOauthToken, userController.oAuth);
+router.route('/oauth/:provider').post(authController.verifyOauthToken, userController.oAuth);
 
 module.exports = router;

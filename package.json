@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "server": "nodemon server.js -w"
+    "server": "set NODE_ENV=development && nodemon server.js -w"
   },
   "repository": {
     "type": "git",
