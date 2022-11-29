@@ -9,7 +9,7 @@ const { v4: uuid } = require('uuid');
 const emailAccountConfirmationLink = async (email, firstName) => {
   // Send verification email
   const origin =
-    process.env.NODE_ENV !== 'development'
+    process.env.NODE_ENV === 'development'
       ? 'http://localhost:3000'
       : 'https://localinspire.vercel.app';
 
@@ -226,7 +226,7 @@ exports.forgotPassword = async function (req, res) {
     // User exists, so generate verification code
     const verificationCode = uuid();
     const origin =
-      process.env.NODE_ENV !== 'development'
+      process.env.NODE_ENV === 'development'
         ? // ? 'http://192.168.177.12:5000'
           'http://localhost:3000'
         : 'https://localinspire.vercel.app';
