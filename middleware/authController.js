@@ -7,6 +7,7 @@ const { redisClient } = require('../databases/redis');
 const EmailService = require('../services/emailService');
 const User = require('../models/User');
 const stringUtils = require('../utils/string-utils');
+const emailService = require('../services/emailService');
 
 // const { redisClient } = require('../databases/redis');
 
@@ -37,18 +38,6 @@ exports.genVerificationCode = async () => {
     return parseInt(first + shuffle(digits).join('').substring(0, 3), 10);
   };
   return Promise.resolve(genRandom4Digits());
-};
-
-const startNewEmailVerification = async function (userEmail) {
-  const newCode = await genVerificationCode();
-  console.log('Generated new code: ', newCode);
-  await authQueries.saveEmailVerification(userEmail, newCode + '-' + 'unverified');
-
-  // Send code to email
-  const feedback = await EmailService.sendEmailVerificationCode(userEmail, newCode);
-  console.log('Message sent: ', feedback);
-
-  return { feedback, newCode };
 };
 
 const googleVerify = async (token, clientUser) => {
@@ -110,24 +99,36 @@ exports.verifyOauthToken = async (req, res, next) => {
   console.log(provider, clientUser, account);
 
   try {
-    switch (provider) {
-      case 'google': {
-        const { success } = await googleVerify(account.access_token, clientUser);
-        if (success) {
-          req.verifiedUser = clientUser;
-          return next();
-        }
-        return res.status(400).json({ status: 'FAIL' });
-      }
-      case 'facebook': {
-        const { success } = await facebookVerify(account.access_token, clientUser);
-        if (success) {
-          req.verifiedUser = clientUser;
-          return next();
-        }
-        return res.status(400).json({ status: 'FAIL' });
-      }
+    const { success } = await (provider === 'google'
+      ? googleVerify
+      : provider === 'facebook'
+      ? facebookVerify
+      : () => {})(account.access_token, clientUser);
+
+    if (success) {
+      req.verifiedUser = clientUser;
+      return next();
     }
+    return res.status(400).json({ status: 'FAIL' });
+
+    // switch (provider) {
+    //   case 'google': {
+    //     const { success } = await googleVerify(account.access_token, clientUser);
+    //     if (success) {
+    //       req.verifiedUser = clientUser;
+    //       return next();
+    //     }
+    //     return res.status(400).json({ status: 'FAIL' });
+    //   }
+    //   case 'facebook': {
+    //     const { success } = await facebookVerify(account.access_token, clientUser);
+    //     if (success) {
+    //       req.verifiedUser = clientUser;
+    //       return next();
+    //     }
+    //     return res.status(400).json({ status: 'FAIL' });
+    //   }
+    // }
   } catch (err) {
     console.log('ERR: ', err);
     res.status(400).json(err);

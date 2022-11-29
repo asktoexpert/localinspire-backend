@@ -29,13 +29,21 @@ exports.getCorrespondingEmailWithVerificationCode = async code => {
   return email;
 };
 
-exports.cacheVerificationForAccountConfirmation = async (code, email) => {
-  console.log('To cache: ', code, email);
-  await redisClient.hSet(authKeys.all_account_confirmation, code, email);
+exports.cacheVerificationForAccountConfirmation = async (email, code) => {
+  console.log('To cache: ', email, code);
+  await redisClient.hSet(authKeys.all_account_confirmation, email, code);
 };
-exports.getAccountConfirmationEmail = async code => {
+
+exports.checkAccountConfirmationEmail = async userEmail => {
+  // console.log('All: ', await redisClient.hGetAll(authKeys.all_account_confirmation));
+  // await redisClient.DEL(authKeys.all_account_confirmation);
+  // return await redisClient.hGetAll(authKeys.all_account_confirmation);
+
   console.log('All: ', await redisClient.hGetAll(authKeys.all_account_confirmation));
-  console.log('To check for: ', code);
-  const email = await redisClient.hGet(authKeys.all_account_confirmation, code);
-  return email;
+  console.log('To check for: ', userEmail);
+
+  const emails = await redisClient.hKeys(authKeys.all_account_confirmation);
+  console.log('All emails: ', emails);
+
+  return { isFound: emails.includes(userEmail) };
 };

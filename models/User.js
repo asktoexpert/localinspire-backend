@@ -19,7 +19,7 @@ const userSchema = mongoose.Schema(
       unique: true,
       validate: [validator.isEmail, 'Please enter a valid email'],
     },
-    emailVerified: {
+    accountVerified: {
       required: true,
       type: Boolean,
       default: false,
@@ -48,6 +48,7 @@ const userSchema = mongoose.Schema(
     },
   },
   {
+    timestamps: true,
     toJSON: {
       virtuals: true,
     },

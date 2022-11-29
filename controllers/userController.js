@@ -6,44 +6,66 @@ const { redisClient } = require('../databases/redis');
 const emailService = require('../services/emailService');
 const { v4: uuid } = require('uuid');
 
+const emailAccountConfirmationLink = async (email, firstName) => {
+  // Send verification email
+  const origin =
+    process.env.NODE_ENV !== 'development'
+      ? 'http://localhost:3000'
+      : 'https://localinspire.vercel.app';
+
+  const verificationLink = origin.concat(`/verify/account?email=${email}`);
+  const emailFeedback = await emailService.sendAccountConfirmationRequestEmail(
+    email,
+    verificationLink,
+    firstName
+  );
+  console.log({ emailFeedback, verificationLink, env: process.env.NODE_ENV });
+
+  // Cache the verification code once the email is sent
+  const verificationCode = uuid();
+  await authQueries.cacheVerificationForAccountConfirmation(email, verificationCode);
+};
+
 exports.signupWithCredentials = async function (req, res) {
   try {
-    const exists = await User.isEmailAlreadyInUse(req.body.email);
-    if (exists)
+    const emailInUse = await User.isEmailAlreadyInUse(req.body.email);
+    if (emailInUse)
       return res.status(400).json({
         status: 'FAIL',
         reason: 'EMAIL_IN_USE',
         msg: 'A user with this email already exists',
       });
 
-    const userDetails = {
+    // Create user
+    const newUser = await User.create({
       ...req.body,
+      role: 'USER',
       signedUpWith: 'credentials',
-      emailVerified: false,
-    };
-    if (req.body !== 'MAIN_ADMIN') userDetails.role = req.body.role || 'USER';
+      accountVerified: false,
+    });
 
-    const newUser = await User.create(userDetails);
+    // Send verification email
+    await emailAccountConfirmationLink(req.body.email, req.body.firstName);
+    // const origin =
+    //   process.env.NODE_ENV !== 'development'
+    //     ? // ? 'http://192.168.177.12:5000'
+    //       'http://localhost:3000'
+    //     : 'https://localinspire.vercel.app';
 
-    const verificationCode = uuid();
-    const origin =
-      process.env.NODE_ENV == 'development'
-        ? // ? 'http://192.168.177.12:5000'
-          'http://localhost:3000'
-        : 'https://localinspire.vercel.app';
+    // const verificationLink = origin.concat(`/verify/account?email=${req.body.email}`);
+    // const emailFeedback = await emailService.sendAccountConfirmationRequestEmail(
+    //   req.body.email,
+    //   verificationLink,
+    //   req.body.firstName
+    // );
+    // console.log({ emailFeedback, verificationLink, env: process.env.NODE_ENV });
 
-    const verificationLink = origin.concat(`/verify/account?code=${verificationCode}`);
-    const emailFeedback = await emailService.sendEmailVerificationLinkForPasswordReset(
-      req.body.email,
-      verificationLink
-    );
-    console.log({ emailFeedback, verificationLink, env: process.env.NODE_ENV });
-
-    // Cache the verification once the email is sent
-    await authQueries.cacheVerificationForAccountConfirmation(
-      verificationCode,
-      req.body.email
-    );
+    // // Cache the verification code once the email is sent
+    // const verificationCode = uuid();
+    // await authQueries.cacheVerificationForAccountConfirmation(
+    //   req.body.email,
+    //   verificationCode
+    // );
 
     res.status(201).json({
       status: 'SUCCESS',
@@ -60,24 +82,36 @@ exports.signupWithCredentials = async function (req, res) {
 };
 
 exports.confirmAccount = async (req, res) => {
-  const { code } = req.query;
-  console.log('CODE: ', code);
-  if (!code?.length) {
-    return res.status(400).json({
-      status: 'FAIL',
-      reason: 'INVALID_CODE',
-    });
-  }
-  try {
-    const cachedEmail = await authQueries.getAccountConfirmationEmail(code);
-    console.log({ cachedEmail });
+  const { email } = req.query;
+  console.log('REQ EMAIL: ', email);
 
-    if (!cachedEmail) {
+  if (!email?.length)
+    return res.status(400).json({ status: 'FAIL', msg: 'This is an Invalid URL' });
+
+  try {
+    const user = await User.findUserByEmail(email.trim());
+    if (!user) return res.status(400).json({ status: 'FAIL', msg: 'This link is invalid.' });
+
+    // If user used this link in the past and was confirmed
+    if (user.accountVerified)
+      return res.status(200).json({
+        status: 'SUCCESS',
+        msg: 'Your account has been confirmed. You may close this tab now.',
+      });
+
+    // Check if user's email is found as a cache key
+    const { isFound } = await authQueries.checkAccountConfirmationEmail(email);
+    console.log({ isFound });
+
+    if (!isFound) {
       return res.status(400).json({
         status: 'FAIL',
-        reason: 'INVALID_CODE',
+        msg: 'This is an Invalid URL',
       });
     }
+
+    user.accountVerified = true;
+    await user.save();
 
     res.status(200).json({
       status: 'SUCCESS',
@@ -85,11 +119,7 @@ exports.confirmAccount = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    res.json({
-      status: 'FAIL',
-      msg: err.message,
-      error: err,
-    });
+    res.json({ status: 'FAIL', msg: err.message, error: err });
   }
 };
 
@@ -150,10 +180,12 @@ exports.oAuth = async function (req, res, next) {
         lastName,
         email: verifiedUser.email,
         imgUrl: verifiedUser.image,
-        emailVerified: true,
+        accountVerified: false,
         signedUpWith: req.params.provider,
         role: 'USER',
       });
+      if (verifiedUser.email)
+        await emailAccountConfirmationLink(verifiedUser.email, firstName);
     }
 
     res.status(userExistedBefore ? 200 : 201).json({
@@ -192,7 +224,6 @@ exports.forgotPassword = async function (req, res) {
     console.log({ env: process.env.NODE_ENV });
 
     // User exists, so generate verification code
-    // const code = await authController.genVerificationCode();
     const verificationCode = uuid();
     const origin =
       process.env.NODE_ENV !== 'development'
