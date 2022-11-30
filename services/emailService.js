@@ -28,7 +28,7 @@ class EmailService {
     const options = {
       from: 'Local Inspire',
       to: email,
-      subject: 'Verify your Email',
+      subject: 'Reset your Password',
       html: `<p>Please click the link below to reset your password.</p><br/>${link}`,
     };
     const feedback = await this.#transporter.sendMail(options);

@@ -13,6 +13,7 @@ router.route('/signup').post(
   // authController.verifyEmailForCredentialsSignup,
   userController.signupWithCredentials
 );
+router.route('/is-email-in-use').get(userController.checkEmailAlreadyInUse);
 
 router.route('/forgot-password').get(userController.forgotPassword);
 router.route('/reset-password').post(userController.resetPassword);

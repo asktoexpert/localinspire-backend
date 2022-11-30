@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "server": "odemon server.js -w"
+    "server": "nodemon server.js -w"
   },
   "repository": {
     "type": "git",

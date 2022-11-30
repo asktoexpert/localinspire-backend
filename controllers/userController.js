@@ -46,26 +46,6 @@ exports.signupWithCredentials = async function (req, res) {
 
     // Send verification email
     await emailAccountConfirmationLink(req.body.email, req.body.firstName);
-    // const origin =
-    //   process.env.NODE_ENV !== 'development'
-    //     ? // ? 'http://192.168.177.12:5000'
-    //       'http://localhost:3000'
-    //     : 'https://localinspire.vercel.app';
-
-    // const verificationLink = origin.concat(`/verify/account?email=${req.body.email}`);
-    // const emailFeedback = await emailService.sendAccountConfirmationRequestEmail(
-    //   req.body.email,
-    //   verificationLink,
-    //   req.body.firstName
-    // );
-    // console.log({ emailFeedback, verificationLink, env: process.env.NODE_ENV });
-
-    // // Cache the verification code once the email is sent
-    // const verificationCode = uuid();
-    // await authQueries.cacheVerificationForAccountConfirmation(
-    //   req.body.email,
-    //   verificationCode
-    // );
 
     res.status(201).json({
       status: 'SUCCESS',
@@ -120,6 +100,17 @@ exports.confirmAccount = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.json({ status: 'FAIL', msg: err.message, error: err });
+  }
+};
+
+exports.checkEmailAlreadyInUse = async function (req, res) {
+  try {
+    res.status(200).json({
+      status: 'SUCCESS',
+      isEmailInUse: await User.isEmailAlreadyInUse(req.query.email),
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'ERROR', msg: err.message });
   }
 };
 
