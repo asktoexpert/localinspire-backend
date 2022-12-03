@@ -19,6 +19,11 @@ const userSchema = mongoose.Schema(
       unique: true,
       validate: [validator.isEmail, 'Please enter a valid email'],
     },
+    facebookEmail: {
+      type: String,
+      lowercase: true,
+      validate: [validator.isEmail, 'Please enter a valid email'],
+    },
     accountVerified: {
       required: true,
       type: Boolean,

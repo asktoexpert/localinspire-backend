@@ -28,6 +28,7 @@ const emailAccountConfirmationLink = async (email, firstName) => {
 
 exports.signupWithCredentials = async function (req, res) {
   try {
+    console.log('In signupWithCredentials controller');
     const emailInUse = await User.isEmailAlreadyInUse(req.body.email);
     if (emailInUse)
       return res.status(400).json({
@@ -155,17 +156,33 @@ exports.loginWithCredentials = async (req, res) => {
   }
 };
 
+// exports.findUserByAnyEmail = async (req, res, next) => {
+//   try {
+//     const user = await User.findOne({
+//       $or: [{ email: req.params.email }, { facebookEmail: req.params.email }],
+//     });
+//     console.log(user);
+//     res.json({ user });
+//   } catch (err) {
+//     res.json({ err });
+//   }
+// };
+
 exports.oAuth = async function (req, res, next) {
   const { verifiedUser } = req;
   const [firstName, lastName] = verifiedUser.name.split(' ');
   console.log('verifiedUser: ', verifiedUser);
 
   try {
-    let user = await User.findOne({ email: verifiedUser.email });
-    let userExistedBefore = true;
+    // Check if user signed up before with email
+    // let user = await User.findUserByEmail(verifiedUser.email);
+    let user = await User.findOne({
+      $or: [{ email: verifiedUser.email }, { facebookEmail: req.params.email }],
+    });
 
     if (!user) {
       userExistedBefore = false;
+      // Create new user
       user = await User.create({
         firstName,
         lastName,
@@ -175,14 +192,15 @@ exports.oAuth = async function (req, res, next) {
         signedUpWith: req.params.provider,
         role: 'USER',
       });
-      if (verifiedUser.email)
-        await emailAccountConfirmationLink(verifiedUser.email, firstName);
+      verifiedUser.email &&
+        (await emailAccountConfirmationLink(verifiedUser.email, firstName));
     }
 
     res.status(userExistedBefore ? 200 : 201).json({
       status: 'SUCCESS',
       data: {
         ...user.toObject(),
+        // Send the incoming Oauth provider's data, not the one from DB
         firstName,
         lastName,
         imgUrl: verifiedUser.image,

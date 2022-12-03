@@ -43,40 +43,43 @@ exports.genVerificationCode = async () => {
 const googleVerify = async (token, clientUser) => {
   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
 
+  const handleResponse = function (err, res, body) {
+    if (err) this.reject(err);
+    const result = JSON.parse(body);
+    console.log('Google Result: ', result);
+
+    if (result.error) this.reject({ success: false });
+    if (result.user_id === clientUser.id && result.email === clientUser.email)
+      this.resolve({ success: true });
+    this.reject({ success: false });
+  };
+
   return new Promise((resolve, reject) => {
-    const callback = (err, res, body) => {
-      if (err) reject(err);
-      const result = JSON.parse(body);
-      console.log('Google Result: ', result);
-
-      if (result.error) reject({ success: false });
-      if (result.user_id === clientUser.id && result.email === clientUser.email)
-        resolve({ success: true });
-      reject({ success: false });
-    };
-
-    request(url, callback);
+    request(url, handleResponse.bind({ resolve, reject }));
   });
 };
 
 const facebookVerify = async (token, clientUser) => {
   const url = `https://graph.facebook.com/me?access_token=${token}`;
-  return new Promise((resolve, reject) => {
-    request(url, (err, res, body) => {
-      if (err) reject(err);
 
-      const result = JSON.parse(body);
-      console.log('Facebook Result: ', result);
+  const handleResponse = function (err, res, body) {
+    if (err) this.reject(err);
 
-      if (result.error) reject(result);
+    const result = JSON.parse(body);
+    console.log('Facebook Result: ', result);
 
-      if (result.id === clientUser.id) {
-        if (!result.email) resolve({ success: true });
-        if (result.email !== clientUser.email) reject({ success: false });
-      }
-      reject(result);
-    });
-  });
+    if (result.error) this.reject(result);
+
+    if (result.id === clientUser.id) {
+      if (!result.email) this.resolve({ success: true });
+      if (result.email !== clientUser.email) this.reject({ success: false });
+    }
+    this.reject(result);
+  };
+
+  return new Promise((resolve, reject) =>
+    request(url, handleResponse.bind({ resolve, reject }))
+  );
 };
 
 exports.verifyCredentials = (req, res, next) => {
@@ -110,25 +113,6 @@ exports.verifyOauthToken = async (req, res, next) => {
       return next();
     }
     return res.status(400).json({ status: 'FAIL' });
-
-    // switch (provider) {
-    //   case 'google': {
-    //     const { success } = await googleVerify(account.access_token, clientUser);
-    //     if (success) {
-    //       req.verifiedUser = clientUser;
-    //       return next();
-    //     }
-    //     return res.status(400).json({ status: 'FAIL' });
-    //   }
-    //   case 'facebook': {
-    //     const { success } = await facebookVerify(account.access_token, clientUser);
-    //     if (success) {
-    //       req.verifiedUser = clientUser;
-    //       return next();
-    //     }
-    //     return res.status(400).json({ status: 'FAIL' });
-    //   }
-    // }
   } catch (err) {
     console.log('ERR: ', err);
     res.status(400).json(err);
