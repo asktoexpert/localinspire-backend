@@ -2,7 +2,6 @@ const User = require('../models/User');
 const stringUtils = require('../utils/string-utils');
 const authController = require('../middleware/authController');
 const authQueries = require('../databases/redis/queries/auth.queries');
-const { redisClient } = require('../databases/redis');
 const emailService = require('../services/emailService');
 const { v4: uuid } = require('uuid');
 
@@ -177,11 +176,12 @@ exports.oAuth = async function (req, res, next) {
     // Check if user signed up before with email
     // let user = await User.findUserByEmail(verifiedUser.email);
     let user = await User.findOne({
-      $or: [{ email: verifiedUser.email }, { facebookEmail: req.params.email }],
+      $or: [{ email: verifiedUser.email }, { facebookEmail: verifiedUser.email }],
     });
+    let userExistedBefore = !!user;
+    console.log({ user });
 
-    if (!user) {
-      userExistedBefore = false;
+    if (!userExistedBefore) {
       // Create new user
       user = await User.create({
         firstName,

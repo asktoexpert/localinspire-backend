@@ -40,6 +40,19 @@ exports.genVerificationCode = async () => {
   return Promise.resolve(genRandom4Digits());
 };
 
+exports.verifyCredentials = (req, res, next) => {
+  const { email, password } = req.body;
+  console.log('Req body: ', req.body);
+
+  if (!email || !password) {
+    return res.status(400).json({
+      status: 'FAIL',
+      reason: 'BAD_CREDENTIALS',
+    });
+  }
+  next();
+};
+
 const googleVerify = async (token, clientUser) => {
   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
 
@@ -80,19 +93,6 @@ const facebookVerify = async (token, clientUser) => {
   return new Promise((resolve, reject) =>
     request(url, handleResponse.bind({ resolve, reject }))
   );
-};
-
-exports.verifyCredentials = (req, res, next) => {
-  const { email, password } = req.body;
-  console.log('Req body: ', req.body);
-
-  if (!email || !password) {
-    return res.status(400).json({
-      status: 'FAIL',
-      reason: 'BAD_CREDENTIALS',
-    });
-  }
-  next();
 };
 
 exports.verifyOauthToken = async (req, res, next) => {
