@@ -155,26 +155,11 @@ exports.loginWithCredentials = async (req, res) => {
   }
 };
 
-// exports.findUserByAnyEmail = async (req, res, next) => {
-//   try {
-//     const user = await User.findOne({
-//       $or: [{ email: req.params.email }, { facebookEmail: req.params.email }],
-//     });
-//     console.log(user);
-//     res.json({ user });
-//   } catch (err) {
-//     res.json({ err });
-//   }
-// };
-
 exports.oAuth = async function (req, res, next) {
   const { verifiedUser } = req;
-  const [firstName, lastName] = verifiedUser.name.split(' ');
-  console.log('verifiedUser: ', verifiedUser);
+  console.log('Verified user: ', verifiedUser);
 
   try {
-    // Check if user signed up before with email
-    // let user = await User.findUserByEmail(verifiedUser.email);
     let user = await User.findOne({
       $or: [{ email: verifiedUser.email }, { facebookEmail: verifiedUser.email }],
     });
@@ -184,16 +169,13 @@ exports.oAuth = async function (req, res, next) {
     if (!userExistedBefore) {
       // Create new user
       user = await User.create({
-        firstName,
-        lastName,
-        email: verifiedUser.email,
-        imgUrl: verifiedUser.image,
+        ...verifiedUser,
         accountVerified: false,
         signedUpWith: req.params.provider,
         role: 'USER',
       });
       verifiedUser.email &&
-        (await emailAccountConfirmationLink(verifiedUser.email, firstName));
+        (await emailAccountConfirmationLink(verifiedUser.email, verifiedUser.firstName));
     }
 
     res.status(userExistedBefore ? 200 : 201).json({
@@ -201,9 +183,7 @@ exports.oAuth = async function (req, res, next) {
       data: {
         ...user.toObject(),
         // Send the incoming Oauth provider's data, not the one from DB
-        firstName,
-        lastName,
-        imgUrl: verifiedUser.image,
+        ...verifiedUser,
         currentlyLoggedInWith: req.params.provider,
         accessToken: authController.signToken(user._id, user.email),
         rft: authController.genRefreshToken(),

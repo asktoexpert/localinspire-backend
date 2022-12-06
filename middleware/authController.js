@@ -8,6 +8,7 @@ const EmailService = require('../services/emailService');
 const User = require('../models/User');
 const stringUtils = require('../utils/string-utils');
 const emailService = require('../services/emailService');
+const axios = require('axios');
 
 // const { redisClient } = require('../databases/redis');
 
@@ -53,27 +54,53 @@ exports.verifyCredentials = (req, res, next) => {
   next();
 };
 
-const googleVerify = async (token, clientUser) => {
-  const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
+// const googleVerify = async (token, clientUser) => {
+//   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
 
-  const handleResponse = function (err, res, body) {
-    if (err) this.reject(err);
-    const result = JSON.parse(body);
-    console.log('Google Result: ', result);
+//   const handleResponse = function (err, res, body) {
+//     if (err) this.reject(err);
+//     const result = JSON.parse(body);
+//     console.log('Google Result: ', result);
 
-    if (result.error) this.reject({ success: false });
-    if (result.user_id === clientUser.id && result.email === clientUser.email)
-      this.resolve({ success: true });
-    this.reject({ success: false });
-  };
+//     if (result.error) this.reject({ success: false });
+//     if (result.user_id === clientUser.id && result.email === clientUser.email)
+//       this.resolve({ success: true });
+//     this.reject({ success: false });
+//   };
 
-  return new Promise((resolve, reject) => {
-    request(url, handleResponse.bind({ resolve, reject }));
+//   return new Promise((resolve, reject) => {
+//     request(url, handleResponse.bind({ resolve, reject }));
+//   });
+// };
+
+const googleVerify = async function (accessToken) {
+  const url = 'https://www.googleapis.com/oauth2/v3/userinfo';
+
+  const { data: result } = await axios.get(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
   });
+
+  console.log('Data from Google: ', result);
+  if (result.error) return { success: false, msg: 'Invalid token' };
+
+  return {
+    success: true,
+    user: {
+      firstName: result.given_name,
+      lastName: result.family_name,
+      email: result.email,
+      imgUrl: result.picture,
+    },
+  };
 };
 
-const facebookVerify = async (token, clientUser) => {
-  const url = `https://graph.facebook.com/me?access_token=${token}`;
+const facebookVerify = async function (accessToken, profile) {
+  const url = `https://graph.facebook.com/me?access_token=${accessToken}`;
+
+  console.log('Body profile: ', profile.name);
 
   const handleResponse = function (err, res, body) {
     if (err) this.reject(err);
@@ -81,13 +108,16 @@ const facebookVerify = async (token, clientUser) => {
     const result = JSON.parse(body);
     console.log('Facebook Result: ', result);
 
-    if (result.error) this.reject(result);
+    if (result.error || result?.id !== profile.id) return this.reject(result);
 
-    if (result.id === clientUser.id) {
-      if (!result.email) this.resolve({ success: true });
-      if (result.email !== clientUser.email) this.reject({ success: false });
-    }
-    this.reject(result);
+    const [firstName, lastName] = profile.name.split(' ');
+    const user = {
+      firstName,
+      lastName,
+      email: profile.email,
+      imgUrl: profile.picture.data.url,
+    };
+    this.resolve({ success: true, user });
   };
 
   return new Promise((resolve, reject) =>
@@ -96,23 +126,26 @@ const facebookVerify = async (token, clientUser) => {
 };
 
 exports.verifyOauthToken = async (req, res, next) => {
-  const { provider } = req.params;
-  const { user: clientUser, account } = req.body;
+  const [{ provider }, { access_token }] = [req.params, req.query];
 
-  console.log(provider, clientUser, account);
+  console.log('Req body: ', req.body);
+  console.log({ provider, access_token });
+
+  const verifiers = { google: googleVerify, facebook: facebookVerify };
 
   try {
-    const { success } = await (provider === 'google'
-      ? googleVerify
-      : provider === 'facebook'
-      ? facebookVerify
-      : () => {})(account.access_token, clientUser);
+    const result = await verifiers[provider](access_token, req.body);
+    console.log('Final result: ', result);
 
-    if (success) {
-      req.verifiedUser = clientUser;
+    if (result.success) {
+      req.verifiedUser = result.user;
       return next();
+      // return res.json({ success: true });
     }
-    return res.status(400).json({ status: 'FAIL' });
+
+    return res
+      .status(400)
+      .json({ status: 'FAIL', msg: result.msg || 'Sorry, something went wrong' });
   } catch (err) {
     console.log('ERR: ', err);
     res.status(400).json(err);

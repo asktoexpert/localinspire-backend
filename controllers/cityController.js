@@ -47,7 +47,7 @@ exports.searchCities = async (req, res, next) => {
     }
 
     const { cities } = result;
-    cityQueries.cacheCitySearchResults(cities);
+    await cityQueries.cacheCitySearchResults(cities);
 
     res.status(200).json({
       status: 'SUCCESS',
