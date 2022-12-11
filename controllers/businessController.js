@@ -9,12 +9,11 @@ exports.searchBusinessCategories = async function (req, res, next) {
 
   try {
     const [result] = await Business.aggregate([
-      { $match: { SIC8Category: { $regex: `^${textQuery}.*`, $options: 'i' } } },
-      { $project: { SIC8Category: 1 } },
-      { $group: { categories: { $addToSet: '$SIC8Category' }, _id: null } },
+      { $match: { SIC8: { $regex: `^${textQuery}`, $options: 'i' } } },
+      { $project: { SIC8: 1 } },
+      { $group: { categories: { $addToSet: '$SIC8' }, _id: null } },
       { $project: { _id: 0 } },
     ]);
-
     if (!result?.categories) throw new Error('');
 
     const { categories } = result;
@@ -35,29 +34,24 @@ exports.searchBusinessCategories = async function (req, res, next) {
   }
 };
 
-// Find businesses based on location coords & matching coordinates
+// Search businesses
 exports.findBusinesses = async function (req, res, next) {
   const { category, cityName, stateCode, page, limit } = req.businessSearchParams;
-  // const skip = page > 0 ? (page - 1) * limit : 0;
 
   if (!category || !cityName || !stateCode)
     return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });
 
   try {
-    // Find businesses whose fields match the query
+    // Find businesses whose SIC8 is like the query, city matches and state matches
     const businesses = await Business.find({
-      SIC8Category: { $regex: `${category}`, $options: 'i' },
-      city: stringUtils.toTitleCase(cityName),
+      SIC8: { $regex: `${category}`, $options: 'i' },
+      city: { $regex: `^${cityName}`, $options: 'i' },
       stateCode: stateCode.toUpperCase(),
     });
 
-    const paginatedBusinesses = await arrayUtils.paginate({
-      array: businesses,
-      page,
-      limit,
-    });
+    const pagedBusinesses = await arrayUtils.paginate({ array: businesses, page, limit });
 
-    // Store in Redis if there are search results
+    // Cache search results
     if (businesses.length) {
       await businessQueries.cacheBusinessSearchResults({
         keyword: category,
@@ -70,9 +64,9 @@ exports.findBusinesses = async function (req, res, next) {
     res.status(200).json({
       status: 'SUCCESS',
       source: 'db',
-      results: paginatedBusinesses.length,
+      results: pagedBusinesses.length,
       allResults: businesses.length,
-      businesses: paginatedBusinesses,
+      businesses: pagedBusinesses,
     });
   } catch (err) {
     console.log('Error -> ', err);

@@ -46,7 +46,7 @@ class EmailService {
           <p>Thank you for joining us at Local Inspire.</p>
           <p style="margin-bottom: 30px">To complete the registration process, comfirm your account by clicking the link below.</p>
           <br/>
-          <a href='${link}' style="background: #0955a1; color: #fff; padding: 7px 15px; border-radius: 999px; text-align: center;">Confirm My Account</a>
+          <a href='${link}' style="background: red; color: #fff; padding: 7px 15px; border-radius: 999px; text-align: center;">Confirm My Account</a>
         </div>
       `,
     };

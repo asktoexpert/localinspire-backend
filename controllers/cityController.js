@@ -2,7 +2,7 @@ const cityQueries = require('../databases/redis/queries/city.queries');
 const Business = require('../models/Business');
 
 exports.searchCities = async (req, res, next) => {
-  const { textQuery } = req.searchCitiesParams;
+  const { textQuery } = req.searchCitiesParams || req.query;
 
   try {
     // const cities = await Business.find({
@@ -11,21 +11,19 @@ exports.searchCities = async (req, res, next) => {
     //   .select('+city +stateCode')
     //   .distinct('city');
     let [cityQuery, stateQuery] = textQuery.split('-');
+
     [cityQuery, stateQuery] = [
       cityQuery.toLowerCase().trim(),
       stateQuery?.toUpperCase().trim(),
     ];
 
-    const filters = {
-      city: { $regex: new RegExp(`^${cityQuery}.*`, 'i') },
-    };
+    const filters = { city: { $regex: new RegExp(`^${cityQuery}`, 'i') } };
 
     if (stateQuery) filters.stateCode = { $regex: new RegExp(`^${stateQuery}`, 'i') };
-    console.log('Filters: ', filters);
 
     const [result] = await Business.aggregate([
       {
-        $match: { ...filters },
+        $match: filters,
       },
       {
         $project: { cityInState: { $concat: ['$city', ', ', '$stateCode'] } },
@@ -40,21 +38,19 @@ exports.searchCities = async (req, res, next) => {
         $project: { _id: 0 },
       },
     ]);
-    console.log({ result });
 
     if (!result?.cities) {
       return res.json({ status: 'SUCCESS', source: 'db', results: 0, cities: [] });
     }
 
-    const { cities } = result;
-    await cityQueries.cacheCitySearchResults(cities);
+    // Cache matching cities
+    let { cities } = result;
+    cities = cities.filter(c => c !== null);
 
-    res.status(200).json({
-      status: 'SUCCESS',
-      source: 'db',
-      results: cities.length,
-      cities,
-    });
+    console.log({ cities });
+    if (cities.length) await cityQueries.cacheCitySearchResults(cities);
+
+    res.status(200).json({ status: 'SUCCESS', source: 'db', results: cities.length, cities });
   } catch (err) {
     console.log('Error: ', err);
 

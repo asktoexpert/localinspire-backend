@@ -1,8 +1,6 @@
 const { ConnectionTimeoutError } = require('redis');
 const { redisClient } = require('../../databases/redis');
-const {
-  set_of_all_business_categories,
-} = require('../../databases/redis/keys/business.keys');
+const { set_of_all_business_categories } = require('../../databases/redis/keys/business.keys');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
 const stringUtils = require('../../utils/string-utils');
@@ -21,8 +19,7 @@ exports.searchCachedBusinessCategories = async function (req, res, next) {
 
     const cacheResults = cachedCategories.filter(categ => {
       return (
-        categ.toLowerCase().startsWith(textQuery) ||
-        textQuery.startsWith(categ.toLowerCase())
+        categ.toLowerCase().startsWith(textQuery) || textQuery.startsWith(categ.toLowerCase())
       );
     });
     console.log('Matching Results in cache: ', cacheResults);
@@ -34,6 +31,7 @@ exports.searchCachedBusinessCategories = async function (req, res, next) {
       req.searchCategParams = { textQuery };
       return next();
     }
+
     res.status(200).json({
       source: 'cache',
       status: 'SUCCESS',
@@ -77,6 +75,7 @@ exports.findCachedBusinesses = async function (req, res, next) {
     });
     // return res.json({ searchResults });
     const cacheMiss = !searchResults;
+
     if (cacheMiss) {
       req.businessSearchParams = { category, cityName, stateCode, page, limit };
       return next();

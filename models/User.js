@@ -50,6 +50,7 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
       enum: ['USER', 'CITY_MANAGER', 'BUSINESS_OWNER', 'MAIN_ADMIN'],
+      default: 'USER',
     },
   },
   {

@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const businessSchema = new mongoose.Schema({
-  businessName: { type: String, required: true },
-  SIC2Category: { type: String, required: true },
-  SIC4Category: { type: String, required: true },
-  SIC8Category: { type: String },
+  businessName: { type: String, required: true, unique: true },
+  SIC2: { type: String, required: true },
+  SIC4: { type: String, required: true },
+  SIC8: { type: String },
   contactName: { type: String, required: true },
   stateCode: { type: String, required: true },
   city: { type: String, required: true },
@@ -13,7 +13,7 @@ const businessSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   web: { type: String, lowercase: true },
   // coordinates: { type: { type: String }, coordinates: [] },
-  // coordinates: { type: String },
+  coordinates: { type: String },
   yearFounded: { type: String, required: true },
   locationType: { type: String, required: true },
   marketVariable: { type: String, required: true },
@@ -24,7 +24,10 @@ const businessSchema = new mongoose.Schema({
 });
 
 // businessSchema.index({ coordinates: '2dsphere' });
-// businessSchema.createIndex({ SIC4Category: 'text' });
+// businessSchema.createIndex({ SIC4: 'text' });
 const Business = mongoose.model('Business', businessSchema);
+businessSchema.index({ SIC8: 'text', stateCode: 1, city: 1 });
+
+Business.on('index', console.log);
 
 module.exports = Business;

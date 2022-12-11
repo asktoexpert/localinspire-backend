@@ -4,8 +4,9 @@ const businessKeys = require('../keys/business.keys');
 
 exports.cacheBusinessCategories = async results => {
   console.log('What to cache: ', results);
-  if (!results.length) return;
-  await redisClient.sAdd(businessKeys.set_of_all_business_categories, results);
+
+  if (results.length)
+    await redisClient.sAdd(businessKeys.set_of_all_business_categories, results);
 };
 
 exports.getCachedBusinessCategories = async () => {
@@ -48,10 +49,13 @@ exports.getMatchingBusinessesInCache = async params => {
     // console.log('parsedKey: ', parsedKey);
     if (cityName !== parsedKey.get('city')) return false;
     if (stateCode.toUpperCase() !== parsedKey.get('stateCode')) return false;
+
     const keyword = parsedKey.get('keyword');
+
+    // category.length >= 5 is for cases where the user searches with category names like 'and' or other conjuctions
     return (
-      (keyword.startsWith(category) || category.startsWith(keyword)) &&
-      category.length >= 5
+      keyword.startsWith(category) || category.startsWith(keyword)
+      // && category.length >= 5
     );
   });
 
