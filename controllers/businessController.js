@@ -7,24 +7,48 @@ exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
   console.log('Query in main controller: ', textQuery);
 
+  const caseSensitiveQuery = stringUtils.toTitleCase(textQuery);
+  console.log({ caseSensitiveQuery });
+
   try {
-    const [result] = await Business.aggregate([
-      { $match: { SIC8: { $regex: `^${textQuery}`, $options: 'i' } } },
-      { $project: { SIC8: 1 } },
-      { $group: { categories: { $addToSet: '$SIC8' }, _id: null } },
-      { $project: { _id: 0 } },
-    ]);
-    if (!result?.categories) throw new Error('');
+    const results = await Business.find({
+      SIC8: { $regex: `^${caseSensitiveQuery}` },
+    }).select('SIC8 -_id');
 
-    const { categories } = result;
-    if (categories.length) await businessQueries.cacheBusinessCategories(categories);
+    let categories;
 
-    return res.status(200).json({
+    if (results.length) {
+      categories = [...new Set(results.map(categ => categ.SIC8))];
+      await businessQueries.cacheBusinessCategories(categories);
+    }
+
+    return res.json({
       status: 'SUCCESS',
       source: 'db',
+      categories: categories || [],
       results: categories.length,
-      categories: categories,
     });
+
+    // const [result] = await Business.aggregate([
+    //   { $match: { SIC8: { $regex: `^${caseSensitiveQuery}` } } },
+    //   // { $match: { SIC8: { $regex: new RegExp(`/^${textQuery}/`, 'i') } } },
+    //   { $project: { SIC8: 1 } },
+    //   { $group: { categories: { $addToSet: '$SIC8' }, _id: null } },
+    //   // { $project: { _id: 0 } },
+    // ]);
+
+    // console.log('Result: ', result);
+    // if (!result?.categories) throw new Error('');
+
+    // const { categories } = result;
+    // // if (categories.length) await businessQueries.cacheBusinessCategories(categories);
+
+    // return res.status(200).json({
+    //   status: 'SUCCESS',
+    //   source: 'db',
+    //   results: categories.length,
+    //   categories: categories,
+    // });
   } catch (err) {
     console.log('In try-CATCH: ', err);
     return res.status(200).json({

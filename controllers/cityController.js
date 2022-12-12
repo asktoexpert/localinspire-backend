@@ -16,6 +16,7 @@ exports.searchCities = async (req, res, next) => {
       cityQuery.toLowerCase().trim(),
       stateQuery?.toUpperCase().trim(),
     ];
+    console.log({ cityQueries, stateQuery });
 
     const filters = { city: { $regex: new RegExp(`^${cityQuery}`, 'i') } };
 

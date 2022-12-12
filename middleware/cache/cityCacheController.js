@@ -4,19 +4,18 @@ const cityQueries = require('../../databases/redis/queries/city.queries');
 exports.searchCachedCities = async (req, res, next) => {
   let { textQuery } = req.query;
 
-  // if (textQuery.length < 2) {
-  //   return res.status(200).json({ status: 'FAIL', msg: 'Please enter at most 2 characters' });
-  // }
+  if (textQuery.length < 2) {
+    return res.status(200).json({ status: 'FAIL', msg: 'Please enter at most 2 characters' });
+  }
 
   textQuery = textQuery.toLowerCase();
-  console.log('Quering cities with: ', textQuery);
+  console.log('Quering cities: ', textQuery);
 
   try {
-    // await redisClient.del('set_of_all_cities');
+    // await redisClient.sRem('set_of_all_cities', 'Casper, WY ');
     // return res.json({
-    //   'set_of_all_cities: ': await redisClient.sMembers('set_of_all_cities'),
+    //   'isMember: ': await redisClient.sIsMember('set_of_all_cities', 'Casper, WY '),
     // });
-
     // req.searchCitiesParams = { textQuery };
     // return next();
 
