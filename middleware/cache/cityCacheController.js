@@ -41,7 +41,7 @@ exports.searchCachedCities = async (req, res, next) => {
       cities: searchResult,
     });
   } catch (err) {
-    console.log('Error: ', Object.keys(err), Object.values(err));
+    console.log('Error log: ', err);
 
     res.status(500).json({
       status: 'ERROR',

@@ -50,7 +50,7 @@ exports.searchBusinessCategories = async function (req, res, next) {
     //   categories: categories,
     // });
   } catch (err) {
-    console.log('In try-CATCH: ', err);
+    console.log('Error log: ', err);
     return res.status(200).json({
       status: 'ERROR',
       source: 'db',
@@ -93,7 +93,7 @@ exports.findBusinesses = async function (req, res, next) {
       businesses: pagedBusinesses,
     });
   } catch (err) {
-    console.log('Error -> ', err);
+    console.log('Error log: ', err);
     res.json({ error: err.message });
   }
 };
