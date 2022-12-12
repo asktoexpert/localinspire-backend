@@ -7,6 +7,12 @@ const cityRouter = require('./routers/cityRouter');
 const app = express();
 
 app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  next();
+});
 app.use(express.json());
 app.use(express.json({ extended: true }));
 
