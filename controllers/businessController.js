@@ -22,7 +22,7 @@ exports.searchBusinessCategories = async function (req, res, next) {
       await businessQueries.cacheBusinessCategories(categories);
     }
 
-    return res.json({
+    return res.status(200).json({
       status: 'SUCCESS',
       source: 'db',
       categories: categories || [],
