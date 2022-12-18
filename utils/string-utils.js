@@ -1,3 +1,5 @@
+exports.getNumberOfWords = str => str.split(' ').length;
+
 exports.toTitleCase = (str, divider = ' ') => {
   return str
     .toLowerCase()

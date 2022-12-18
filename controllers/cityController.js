@@ -1,5 +1,6 @@
 const cityQueries = require('../databases/redis/queries/city.queries');
 const Business = require('../models/Business');
+const arrayUtils = require('../utils/arrayUtils');
 
 exports.searchCities = async (req, res, next) => {
   const { textQuery } = req.searchCitiesParams || req.query;
@@ -49,7 +50,10 @@ exports.searchCities = async (req, res, next) => {
     cities = cities.filter(c => c !== null);
 
     console.log({ cities });
-    if (cities.length) await cityQueries.cacheCitySearchResults(cities);
+    if (cities.length) {
+      await cityQueries.cacheCitySearchResults(cities);
+      await arrayUtils.sortItemsByNumberOfWords(cities);
+    }
 
     res.status(200).json({ status: 'SUCCESS', source: 'db', results: cities.length, cities });
   } catch (err) {

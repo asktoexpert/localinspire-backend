@@ -1,5 +1,6 @@
 const { redisClient } = require('../../databases/redis');
 const cityQueries = require('../../databases/redis/queries/city.queries');
+const arrayUtils = require('../../utils/arrayUtils');
 
 exports.searchCachedCities = async (req, res, next) => {
   let { textQuery } = req.query;
@@ -22,11 +23,11 @@ exports.searchCachedCities = async (req, res, next) => {
     const cachedCities = await cityQueries.getCachedCities();
     console.log('Cached cities: ', cachedCities);
 
-    const searchResult = cachedCities?.filter(c => {
+    const cacheResults = cachedCities?.filter(c => {
       return c.toLowerCase().startsWith(textQuery) || textQuery.startsWith(c.toLowerCase());
     });
 
-    let cacheMiss = !searchResult?.length;
+    let cacheMiss = !cacheResults?.length;
     console.log('cacheMiss: ', cacheMiss ? 'miss' : 'A Hit actually');
 
     if (cacheMiss) {
@@ -34,11 +35,13 @@ exports.searchCachedCities = async (req, res, next) => {
       return next();
     }
 
+    await arrayUtils.sortItemsByNumberOfWords(cacheResults);
+
     res.status(200).json({
       status: 'SUCCESS',
       source: 'cache',
-      results: searchResult.length,
-      cities: searchResult,
+      results: cacheResults.length,
+      cities: cacheResults,
     });
   } catch (err) {
     console.log('Error log: ', err);

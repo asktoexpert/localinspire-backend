@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const businessSchema = new mongoose.Schema({
-  businessName: { type: String, required: true, unique: true },
+  businessName: { type: String, required: true },
   SIC2: { type: String, required: true },
   SIC4: { type: String, required: true },
-  SIC8: { type: String, index: true },
+  SIC8: { type: String },
   contactName: { type: String, required: true },
   stateCode: { type: String, required: true },
   city: { type: String, required: true },

@@ -1,12 +1,20 @@
-// Array.prototype.paginate = function (pageNumber, limit) {
-//   const start = (pageNumber - 1) * limit;
-//   const end = limit * pageNumber;
-//   return this.slice(start, end)
-// }
+const strUtils = require('./string-utils');
 
 exports.paginate = async function ({ array, page, limit }) {
   const start = (page - 1) * limit;
   const end = limit * page;
   console.log({ start, end });
   return Promise.resolve(array.slice(start, end));
+};
+
+exports.sortItemsByNumberOfWords = async (list, order = 'asc') => {
+  if (!('map' in list)) return; // If not an array
+
+  list.sort((prevStr, nextStr) => {
+    if (order === 'desc')
+      return strUtils.getNumberOfWords(nextStr) - strUtils.getNumberOfWords(prevStr);
+    return strUtils.getNumberOfWords(prevStr) - strUtils.getNumberOfWords(nextStr);
+  });
+
+  Promise.resolve();
 };

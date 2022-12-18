@@ -20,6 +20,7 @@ exports.searchBusinessCategories = async function (req, res, next) {
     if (results.length) {
       categories = [...new Set(results.map(categ => categ.SIC8))];
       await businessQueries.cacheBusinessCategories(categories);
+      await arrayUtils.sortItemsByNumberOfWords(categories);
     }
 
     return res.status(200).json({

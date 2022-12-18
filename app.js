@@ -6,7 +6,14 @@ const businessRouter = require('./routers/businessRouter.js');
 const cityRouter = require('./routers/cityRouter');
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : 'https://localinspire.vercel.app',
+  })
+);
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');

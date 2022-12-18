@@ -32,6 +32,8 @@ exports.searchCachedBusinessCategories = async function (req, res, next) {
       return next();
     }
 
+    await arrayUtils.sortItemsByNumberOfWords(cacheResults);
+
     res.status(200).json({
       source: 'cache',
       status: 'SUCCESS',
