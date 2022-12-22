@@ -12,7 +12,6 @@ const businessSchema = new mongoose.Schema({
   address: { type: String, required: true },
   phone: { type: String, required: true },
   web: { type: String, lowercase: true },
-  // coordinates: { type: { type: String }, coordinates: [] },
   coordinates: { type: String },
   yearFounded: { type: String, required: true },
   locationType: { type: String, required: true },
@@ -28,6 +27,6 @@ const businessSchema = new mongoose.Schema({
 const Business = mongoose.model('Business', businessSchema);
 businessSchema.index({ SIC8: 1, stateCode: 1, city: 1 });
 
-Business.on('index', console.log);
+businessSchema.on('index', console.log);
 
 module.exports = Business;

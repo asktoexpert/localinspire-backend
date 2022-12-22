@@ -8,7 +8,7 @@ exports.paginate = async function ({ array, page, limit }) {
 };
 
 exports.sortItemsByNumberOfWords = async (list, order = 'asc') => {
-  if (!('map' in list)) return; // If not an array
+  if (!('map' in list)) return console.log('An array wasnt passed'); // If not an array
 
   list.sort((prevStr, nextStr) => {
     if (order === 'desc')
