@@ -8,10 +8,11 @@ const app = express();
 
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3000'
-        : 'https://localinspire.vercel.app',
+    // origin:
+    //   process.env.NODE_ENV === 'development'
+    //     ? 'http://localhost:3000'
+    //     : // ? 'http://192.168.93.12:3000'
+    //       'https://localinspire.vercel.app',
   })
 );
 app.use((req, res, next) => {

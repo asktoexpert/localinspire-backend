@@ -3,13 +3,15 @@ const { redisClient } = require('../../databases/redis');
 const { set_of_all_business_categories } = require('../../databases/redis/keys/business.keys');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
+const categoryUtils = require('../../utils/category-utils');
 const stringUtils = require('../../utils/string-utils');
 
 exports.searchCachedBusinessCategories = async function (req, res, next) {
   // await redisClient.DEL('set_of_all_business_categories');
   // return res.json(await redisClient.sMembers('set_of_all_business_categories'));
   let { textQuery } = req.query;
-  textQuery = textQuery.toLowerCase();
+  textQuery = categoryUtils.mapCategoryQueryToExistingCategory(textQuery).toLowerCase();
+
   // req.searchCategParams = { textQuery };
   // return next();
 
@@ -50,7 +52,7 @@ exports.findCachedBusinesses = async function (req, res, next) {
   let { category, city: cityName, stateCode, page = 1, limit = 20 } = req.query;
 
   [category, cityName, page, limit] = [
-    category.toLowerCase(),
+    categoryUtils.mapCategoryQueryToExistingCategory(category).toLowerCase(),
     cityName.toLowerCase(),
     +page,
     +limit,

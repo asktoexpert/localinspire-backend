@@ -1,7 +1,10 @@
 const Business = require('../models/Business');
+const BusinessReview = require('../models/BusinessReview');
+
 const stringUtils = require('../utils/string-utils');
 const businessQueries = require('../databases/redis/queries/business.queries');
 const arrayUtils = require('../utils/arrayUtils');
+const mongoose = require('mongoose');
 
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
@@ -11,26 +14,6 @@ exports.searchBusinessCategories = async function (req, res, next) {
   console.log({ caseSensitiveQuery });
 
   try {
-    // const results = await Business.find({
-    //   SIC8: { $regex: `^${caseSensitiveQuery}` },
-    // }).select('SIC8 -_id');
-
-    // let categories;
-
-    // if (results.length) {
-    //   categories = [...new Set(results.map(categ => categ.SIC8))];
-    //   // await businessQueries.cacheBusinessCategories(categories);
-    //   await arrayUtils.sortItemsByNumberOfWords(categories);
-    // }
-
-    // return res.status(200).json({
-    //   status: 'SUCCESS',
-    //   source: 'db',
-    //   results,
-    //   categories: categories || [],
-    //   results: categories.length,
-    // });
-
     const [result] = await Business.aggregate([
       { $match: { SIC8: { $regex: `^${caseSensitiveQuery}` } } },
       { $project: { SIC8: 1 } },
@@ -95,6 +78,39 @@ exports.findBusinesses = async function (req, res, next) {
   } catch (err) {
     console.log('Error log: ', err);
     res.json({ error: err.message });
+  }
+};
+
+exports.reviewBusiness = async (req, res) => {
+  const { user } = req;
+
+  const [visitedMonth, visitedYear] = req.body.visitedWhen.split(' ');
+  const featuresRatingTransformed = Object.entries(req.body.featuresRating).map(([f, r]) => ({
+    feature: f,
+    rating: r,
+  }));
+
+  const newReview = await BusinessReview.create({
+    business: new mongoose.Types.ObjectId(req.params.id),
+    reviewedBy: new mongoose.Types.ObjectId(user._id),
+    ...req.body,
+    visitedWhen: { month: visitedMonth, year: +visitedYear },
+    featuresRating: featuresRatingTransformed,
+  });
+
+  res.status(201).json({ status: 'SUCCESS', review: newReview });
+};
+
+exports.getBusinessReviews = async (req, res) => {
+  console.log(req.params);
+  try {
+    const reviews = await BusinessReview.find({
+      business: mongoose.Types.ObjectId(req.params.id),
+    }).populate('reviewedBy', 'firstName lastName imgUrl');
+
+    res.status(200).json({ status: 'SUCCESS', results: reviews.length, reviews });
+  } catch (err) {
+    console.log(err);
   }
 };
 

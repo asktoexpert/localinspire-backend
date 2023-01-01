@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const request = require('request');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid');
@@ -21,6 +22,24 @@ exports.signToken = (userId, userEmail) => {
 
 exports.genRefreshToken = () => {
   return uuid.v4();
+};
+
+exports.protect = async (req, res, next) => {
+  try {
+    const token = req.headers?.authorization?.replace('Bearer ', '');
+    const { id: userId } = await Promise.resolve(jwt.verify(token, process.env.JWT_SECRET));
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(401).json({ msg: 'AUTH_ERROR' });
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.log(err.message);
+    // if (err.message === 'jwt malformed') {
+    res.status(401).json({ msg: 'AUTH_ERROR' });
+    // }
+  }
 };
 
 exports.genVerificationCode = async () => {

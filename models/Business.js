@@ -27,6 +27,4 @@ const businessSchema = new mongoose.Schema({
 const Business = mongoose.model('Business', businessSchema);
 businessSchema.index({ SIC8: 1, stateCode: 1, city: 1 });
 
-businessSchema.on('index', console.log);
-
 module.exports = Business;
