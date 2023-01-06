@@ -15,7 +15,7 @@ const axios = require('axios');
 
 exports.signToken = (userId, userEmail) => {
   const token = jwt.sign({ id: userId, email: userEmail }, process.env.JWT_SECRET, {
-    expiresIn: '1d',
+    expiresIn: '30d',
   });
   return token;
 };
