@@ -1,5 +1,5 @@
 const cityQueries = require('../databases/redis/queries/city.queries');
-const Business = require('../models/Business');
+const Business = require('../models/business/Business');
 const arrayUtils = require('../utils/arrayUtils');
 const { toTitleCase } = require('../utils/string-utils');
 

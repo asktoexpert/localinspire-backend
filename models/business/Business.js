@@ -20,6 +20,9 @@ const businessSchema = new mongoose.Schema({
   SIC: { type: String, required: true },
   NAICS: { type: String, required: true },
   industry: { type: String, required: true },
+
+  // New
+  owner: { type: mongoose.Schema.Types.ObjectId },
 });
 
 // businessSchema.index({ coordinates: '2dsphere' });

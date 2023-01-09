@@ -33,6 +33,7 @@ exports.protect = async (req, res, next) => {
     if (!user) return res.status(401).json({ msg: 'AUTH_ERROR' });
 
     req.user = user;
+    console.log('User authenticated');
     next();
   } catch (err) {
     console.log(err.message);
