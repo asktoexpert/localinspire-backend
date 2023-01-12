@@ -17,11 +17,17 @@ router
     businessController.searchBusinessCategories
   );
 
-// Get business reviews AND Review business
+// Get business by id
+router.route('/:id').get(businessController.getBusinessById);
+
+// Get business reviews - GET
+//  Review business - POST
 router
   .route('/:id/reviews')
-  .post(authController.protect, businessController.reviewBusiness)
-  .get(authController.protect, businessController.getBusinessReviews);
+  .get(businessController.getBusinessReviews)
+  .post(authController.protect, businessController.reviewBusiness);
+
+router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
 
 router
   .route('/reviews/:reviewId/like')

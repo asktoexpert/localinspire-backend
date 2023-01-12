@@ -83,6 +83,21 @@ exports.findBusinesses = async function (req, res, next) {
   }
 };
 
+exports.getBusinessById = async (req, res) => {
+  try {
+    const business = await Business.findById(req.params.id)
+    const found = !!business;
+
+    res.status(found ? 200 : 404).json({
+      status: found ? 'SUCCESS' : 'FAIL',
+      data: business || null,
+    });
+  } catch (err) {
+    console.log('Error log: ', err);
+    res.json({ error: err.message });
+  }
+};
+
 exports.reviewBusiness = async (req, res) => {
   const { user } = req;
 
@@ -106,22 +121,35 @@ exports.reviewBusiness = async (req, res) => {
 exports.getBusinessReviews = async (req, res) => {
   // console.log(req.query);
   const filter = { business: mongoose.Types.ObjectId(req.params.id) };
-  const sort = '';
+  const sort = req.query.sort?.split(',').join(' ');
 
   if (req.query.rating)
     filter.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
+
   if (req.query.recommends) filter.recommends = req.query.recommends === '1';
-  // if (req.likedBy) filter.likedBy = req.query.likedBy;
   console.log(filter);
 
   try {
     const reviews = await BusinessReview.find(filter)
-      .sort(req.query.sort?.split(',').join(' '))
+      .sort(sort)
       .populate('reviewedBy', 'firstName lastName imgUrl role');
 
     res.status(200).json({ status: 'SUCCESS', results: reviews.length, data: reviews });
   } catch (err) {
     console.log(err);
+  }
+};
+
+exports.getUserReviewOnBusiness = async (req, res) => {
+  try {
+    const userReview = await BusinessReview.findOne({
+      business: req.params.id,
+      reviewedBy: req.query.uid,
+    });
+    res.status(200).json({ status: 'SUCCESS', userReview });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
   }
 };
 
