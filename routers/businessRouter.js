@@ -54,12 +54,10 @@ router
   .post(authController.protect, businessController.toggleDislikeAnswerToBusinessQuestion);
 
 // Get all questions asked about a business
-router
-  .route('/:id/questions')
-  .get(authController.protect, businessController.getQuestionsAskedAboutBusiness);
+router.route('/:id/questions').get(businessController.getQuestionsAskedAboutBusiness);
 
 // Get tips from past visitors about a business
-router.route('/:id/tips').get(authController.protect, businessController.getTipsAboutBusiness);
+router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 
 // FOR DEV ONLY
 router.route('/reviews/dev-edit').patch(businessController.editReviewDev);

@@ -85,7 +85,7 @@ exports.findBusinesses = async function (req, res, next) {
 
 exports.getBusinessById = async (req, res) => {
   try {
-    const business = await Business.findById(req.params.id)
+    const business = await Business.findById(req.params.id);
     const found = !!business;
 
     res.status(found ? 200 : 404).json({
@@ -132,7 +132,7 @@ exports.getBusinessReviews = async (req, res) => {
   try {
     const reviews = await BusinessReview.find(filter)
       .sort(sort)
-      .populate('reviewedBy', 'firstName lastName imgUrl role');
+      .populate([{ path: 'reviewedBy', select: 'firstName lastName imgUrl role' }]);
 
     res.status(200).json({ status: 'SUCCESS', results: reviews.length, data: reviews });
   } catch (err) {
