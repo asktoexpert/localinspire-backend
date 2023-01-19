@@ -22,7 +22,7 @@ const businessSchema = new mongoose.Schema({
   industry: { type: String, required: true },
 
   // New
-  owner: { type: mongoose.Schema.Types.ObjectId },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
 
 // businessSchema.index({ coordinates: '2dsphere' });

@@ -35,7 +35,7 @@ const userSchema = mongoose.Schema(
       minlength: 6,
       select: false,
     },
-    imgUrl: String,
+    imgUrl: { type: String, default: '/img/default-profile-pic.jpeg' },
     gender: {
       type: String,
       enum: ['male', 'female'],
@@ -66,8 +66,6 @@ userSchema.statics.findUserByEmail = async email => {
 };
 
 userSchema.statics.isEmailAlreadyInUse = async email => {
-  const user = await User.findOne({ email });
-  console.log({ USER: user });
   return !!(await User.findOne({ email }));
 };
 

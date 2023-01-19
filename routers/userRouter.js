@@ -1,6 +1,15 @@
 const express = require('express');
-const userController = require('../controllers/userController');
-const authController = require('../middleware/authController');
+const userController = require('../controllers/user/userController');
+const authController = require('../controllers/authController');
+const multer = require('multer');
+
+const multerStorage = multer.memoryStorage();
+
+// const multerFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith('image')) cb(null, true);
+//   else cb(new Error('Only images are allowed'), false);
+// };
+const upload = multer({ storage: multerStorage });
 
 const router = express.Router();
 
@@ -8,11 +17,15 @@ router
   .route('/login')
   .post(authController.verifyCredentials, userController.loginWithCredentials);
 
-router.route('/signup').post(
-  authController.verifyCredentials,
-  // authController.verifyEmailForCredentialsSignup,
-  userController.signupWithCredentials
-);
+router
+  .route('/signup')
+  .post(
+    upload.single('photo'),
+    userController.resizeUserPhoto,
+    authController.verifyCredentials,
+    userController.signupWithCredentials
+  );
+
 router.route('/is-email-in-use').get(userController.checkEmailAlreadyInUse);
 
 router.route('/forgot-password').get(userController.forgotPassword);

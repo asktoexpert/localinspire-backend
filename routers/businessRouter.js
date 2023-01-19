@@ -1,9 +1,32 @@
 const express = require('express');
 const router = express.Router();
 
-const businessController = require('../controllers/businessController');
-const authController = require('../middleware/authController');
-const businessCacheController = require('../middleware/cache/businessCacheController');
+const businessController = require('../controllers/business/businessController');
+const authController = require('../controllers/authController');
+const businessCacheController = require('../controllers/business/businessCacheController');
+
+const multer = require('multer');
+
+// const multerStorage = multer.diskStorage({
+//   destination(req, file, cb) {
+//     console.log('In destination, file = ', file);
+//     cb(null, 'public/img/users');
+//   },
+//   filename: (req, file, cb) => {
+//     const fileExt = file.mimetype.split('/')[1];
+//     cb(null, `business-1a2b3c-${Date.now()}.${fileExt}`);
+//   },
+// });
+// const multerFilter = (req, file, cb) => {
+//   if (file.mimetype.startsWith('image')) cb(null, true);
+//   else cb(new Error('Only images are allowed'), false);
+// };
+// const upload = multer({ dest: 'public/img/users' });
+// const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
+
+const multerStorage = multer.memoryStorage();
+const upload = multer({ storage: multerStorage });
+// const upload = multer({ dest: 'public/img/businesses' });
 
 router
   .route('/find')
@@ -20,12 +43,17 @@ router
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);
 
+// Review business - POST
 // Get business reviews - GET
-//  Review business - POST
 router
   .route('/:id/reviews')
-  .get(businessController.getBusinessReviews)
-  .post(authController.protect, businessController.reviewBusiness);
+  .post(
+    authController.protect,
+    upload.array('photos', 7),
+    businessController.resizeBusinessPhotos,
+    businessController.reviewBusiness
+  )
+  .get(businessController.getBusinessReviews);
 
 router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
 
@@ -61,5 +89,47 @@ router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 
 // FOR DEV ONLY
 router.route('/reviews/dev-edit').patch(businessController.editReviewDev);
+
+// ################# DEV ######################
+const cloudinaryService = require('../services/cloudinaryService');
+const sharp = require('sharp');
+const { v4: uuidv4 } = require('uuid');
+
+router.post('/upload', upload.array('photos', 12), async (req, res) => {
+  try {
+    const businessPhotos = [];
+
+    req.files.forEach((file, i) => {
+      const fileName = `public/img/businesses/business-${uuidv4()}.jpeg`;
+
+      sharp(file.buffer)
+        .resize(500, 500)
+        .jpeg({ quality: 90 })
+        .toFile(fileName, (err, info) => {
+          console.log('In toFile: ', { err, errMsg: err?.message, info });
+        });
+
+      businessPhotos.push(fileName);
+    });
+
+    console.log({ businessPhotos });
+
+    const reqs = businessPhotos.map(async img => {
+      console.log({ img });
+      return cloudinaryService.upload({ dir: 'businesses', filePath: img });
+    });
+
+    const results = await Promise.all(reqs);
+
+    console.log({ results });
+    res.json({ results });
+
+    // console.log({ 'req.files': req.files, 'req.body': req.body });
+    // res.json({ 'req.body': req.body });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+});
 
 module.exports = router;

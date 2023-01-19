@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+const reviewLikesSchema = mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+});
+
 const businessReviewSchema = mongoose.Schema(
   {
     business: { required: true, type: mongoose.Schema.Types.ObjectId, ref: 'Business' },
@@ -23,19 +27,25 @@ const businessReviewSchema = mongoose.Schema(
       month: { type: String, required: true },
       year: { type: Number, enum: [2022], required: true },
     },
-    featuresRating: [
+    featureRatings: [
       {
         feature: {
           type: String,
           enum: ['Food', 'Value', 'Location', 'Service', 'Atmosphere'],
+          required: true,
         },
-        rating: { type: Number, min: 0, max: 5 },
+        rating: {
+          type: Number,
+          min: 0,
+          max: 5,
+          required: [true, 'Please enter a rating for this feature'],
+        },
       },
     ],
     adviceToFutureVisitors: { type: String, minlength: 1, maxlength: 250 },
-    photosWithDescription: [
+    images: [
       {
-        photo: String,
+        photoUrl: String,
         description: { type: String, minlength: 1, maxlength: 70, required: true },
       },
     ],
@@ -46,7 +56,8 @@ const businessReviewSchema = mongoose.Schema(
       },
     ],
 
-    likedBy: [{ type: mongoose.Schema.Types.ObjectId }],
+    // likes: [{ type: mongoose.Schema.Types.ObjectId }],
+    likes: [reviewLikesSchema],
 
     businessOwnerResponse: {
       required: false,
