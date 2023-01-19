@@ -105,44 +105,40 @@ exports.getBusinessById = async (req, res) => {
 exports.resizeBusinessPhotos = async (req, res, next) => {
   if (!req.files.length) return next();
 
+  if (req.files.some(f => !f.mimetype.startsWith('image/')))
+    return res.json({ error: 'Only images are allowed' });
+
   try {
     console.log({ 'req.files': req.files, 'req.body': req.body });
 
-    if (req.files.some(f => !f.mimetype.startsWith('image/')))
-      return res.json({ error: 'Only images are allowed' });
+    req.body.photoUrls = [];
 
-    // 1) Resize request files
-    const serverFiles = req.files.map(async (file, i) => {
-      const folder = `public/img/businesses`;
-      const filePath = `${folder}/business-${req.params.id}-${Date.now()}_${i}.jpeg`;
+    await Promise.all(
+      req.files.map(async (rawFile, i) => {
+        const filename = `business-${req.params.id}-${Date.now()}_${i}.jpeg`;
+        const filePath = `public/img/businesses/${filename}`;
 
-      const sharpResult = await sharp(file.buffer)
-        .resize(2000, 1333)
-        .jpeg({ quality: 90 })
-        .toFormat('jpeg')
-        .toFile(filePath);
+        // 1) Resize request files
+        const sharpResult = await sharp(rawFile.buffer)
+          .resize(2000, 1333)
+          .jpeg({ quality: 90 })
+          .toFormat('jpeg')
+          .toFile(filePath);
+        console.log({ sharpResult });
 
-      console.log({ sharpResult });
-      return filePath;
-    });
+        // 2) Upload server files to cloudinary server
+        const uploadResult = await cloudinaryService.upload({ dir: 'businesses', filePath });
+        console.log({ uploadResult });
+        req.body.photoUrls.push(uploadResult.secure_url);
 
-    // 2) Upload server files to cloudinary server
-    const reqs = serverFiles.map(async file => {
-      return cloudinaryService.upload({ dir: 'businesses', filePath: await file });
-    });
-    const uploadResults = await Promise.all(reqs);
-    console.log({ uploadResults });
+        // 3) Delete file from local server
+        fs.unlink(filePath, err => {
+          if (err) return console.log('Could not delete file from server: ', err);
+          console.log('Business image deleted from server ');
+        });
+      })
+    );
 
-    // 3) Delete files from local server
-    serverFiles.forEach(async file => {
-      fs.unlink(await file, err => {
-        if (err) return console.log('Could not delete file from server: ', err);
-        console.log('Business image got deleted from server');
-      });
-    });
-
-    // Load up cloudinary img urls to current req
-    req.body.photoUrls = uploadResults.map(result => result.secure_url);
     next();
   } catch (err) {
     console.log('Error log: ', err);
