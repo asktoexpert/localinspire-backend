@@ -51,10 +51,7 @@ exports.resizeUserPhoto = async (req, res, next) => {
     console.log({ sharpResult });
 
     // Upload photo to Cloudinary server
-    const uploadResult = await cloudinaryService.upload({
-      dir: 'users',
-      filePath,
-    });
+    const uploadResult = await cloudinaryService.upload({ dir: 'users', filePath });
 
     if (uploadResult.secure_url) {
       req.body.imgUrl = uploadResult.secure_url;

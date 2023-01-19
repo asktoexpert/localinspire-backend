@@ -1,4 +1,8 @@
 const fs = require('fs');
+const mongoose = require('mongoose');
+const sharp = require('sharp');
+const { v4: uuidv4 } = require('uuid');
+
 const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
@@ -7,8 +11,6 @@ const BusinessAnswer = require('../../models/business/Answer');
 const stringUtils = require('../../utils/string-utils');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
-const mongoose = require('mongoose');
-const sharp = require('sharp');
 const cloudinaryService = require('../../services/cloudinaryService');
 const User = require('../../models/User');
 
@@ -115,7 +117,7 @@ exports.resizeBusinessPhotos = async (req, res, next) => {
 
     await Promise.all(
       req.files.map(async (rawFile, i) => {
-        const filename = `business-${req.params.id}-${Date.now()}_${i}.jpeg`;
+        const filename = `business-${req.params.id}-${uuidv4()}-${i}.jpeg`;
         const filePath = `public/img/businesses/${filename}`;
 
         // 1) Resize request files
