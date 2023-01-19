@@ -117,7 +117,7 @@ exports.resizeBusinessPhotos = async (req, res, next) => {
 
     await Promise.all(
       req.files.map(async (rawFile, i) => {
-        const filename = `business-${req.params.id}-${uuidv4()}-${i}.jpeg`;
+        const filename = `business-${req.params.id}-${Date.now()}-${i}.jpeg`;
         const filePath = `public/img/businesses/${filename}`;
 
         // 1) Resize request files
