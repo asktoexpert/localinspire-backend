@@ -1,11 +1,12 @@
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 
 const userRouter = require('./routers/userRouter.js');
 const businessRouter = require('./routers/businessRouter.js');
 const cityRouter = require('./routers/cityRouter');
-const bodyParser = require('body-parser');
+const questionRouter = require('./routers/questionRouter');
 
 const app = express();
 
@@ -33,7 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/businesses', businessRouter);
 app.use('/api/v1/cities', cityRouter);
-
+app.use('/api/v1/questions', questionRouter);
 // app.all('*', (req, res) => {
 //   res.status(400).send(`Invalid url: `, req.originalUrl);
 // });

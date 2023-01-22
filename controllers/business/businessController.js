@@ -275,18 +275,42 @@ exports.toggleBusinessReviewHelpful = async (req, res) => {
 // }
 
 exports.getQuestionsAskedAboutBusiness = async (req, res) => {
-  try {
-    const questions = await BusinessQuestion.find({ business: req.params.id })
-      .select('-business')
-      .populate([
-        { path: 'askedBy', select: 'firstName lastName imgUrl role' },
-        {
-          path: 'answers',
-          populate: { path: 'answeredBy', select: 'firstName lastName imgUrl role' },
-        },
-      ]);
+  const { page = 1, limit } = req.query;
+  const skip = limit * (page - 1);
 
-    res.status(200).json({ status: 'SUCCESS', results: questions.length, data: questions });
+  try {
+    console.log(req.query);
+    const sort = req.query.sort?.split(',').join(' ').trim();
+    console.log({ sort, 'req.query.sort': req.query.sort });
+
+    const business = await Business.findById(req.params.id);
+    if (!business) return res.status(404).json({ status: 'NOT_FOUND' });
+
+    const [questionsCount, questions] = await Promise.all([
+      BusinessQuestion.find({ business: req.params.id }).count(),
+      BusinessQuestion.find({ business: req.params.id })
+        .sort(sort)
+        .select('-business')
+        .skip(skip)
+        .limit(limit)
+        .populate([
+          { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+          {
+            path: 'answers',
+            populate: { path: 'answeredBy', select: 'firstName lastName imgUrl role' },
+          },
+        ]),
+    ]);
+
+    if (sort?.includes('-answersCount')) {
+      questions.sort((prev, next) => next.answers.length - prev.answers.length);
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      total: questionsCount,
+      data: questions,
+    });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

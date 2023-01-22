@@ -1,5 +1,4 @@
 const express = require('express');
-const router = express.Router();
 
 const businessController = require('../controllers/business/businessController');
 const authController = require('../controllers/authController');
@@ -28,6 +27,8 @@ const multerStorage = multer.memoryStorage();
 const upload = multer({ storage: multerStorage });
 // const upload = multer({ dest: 'public/img/businesses' });
 
+const router = express.Router();
+
 router
   .route('/find')
   .get(businessCacheController.findCachedBusinesses, businessController.findBusinesses);
@@ -42,6 +43,11 @@ router
 
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);
+
+// TEST: Get business question by business id
+router.route('/:id/questions/:qid').get(async (req, res) => {
+  res.json(await BusinessQuestion.findById(req.params.qid));
+});
 
 // Review business - POST
 // Get business reviews - GET
@@ -94,6 +100,7 @@ router.route('/reviews/dev-edit').patch(businessController.editReviewDev);
 const cloudinaryService = require('../services/cloudinaryService');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
+const BusinessQuestion = require('../models/business/BusinessQuestion');
 
 router.post('/upload', upload.array('photos', 12), async (req, res) => {
   try {

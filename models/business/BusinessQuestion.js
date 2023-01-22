@@ -10,8 +10,13 @@ const businessQuestionSchema = mongoose.Schema(
   {
     timestamps: true,
     toObject: { virtuals: true },
+    toJSON: { virtuals: true },
   }
 );
+
+businessQuestionSchema.virtual('answersCount').get(function () {
+  return this.answers.length;
+});
 
 const BusinessQuestion = mongoose.model('BusinessQuestion', businessQuestionSchema);
 module.exports = BusinessQuestion;
