@@ -31,9 +31,13 @@ router.route('/is-email-in-use').get(userController.checkEmailAlreadyInUse);
 router.route('/forgot-password').get(userController.forgotPassword);
 router.route('/reset-password').post(userController.resetPassword);
 router.route('/confirm-account').get(userController.confirmAccount);
-// router.route('/:email').get(userController.findUserByAnyEmail);
-// router.route('/:email/status').get(userController.getUserEmailVerifiedStatus);
 
 router.route('/oauth/:provider').post(authController.verifyOauthToken, userController.oAuth);
+
+router
+  .route('/update-user-location')
+  .patch(authController.protect, userController.updateUserLocation);
+
+router.route('/contribute').patch(authController.protect, userController.addContribution);
 
 module.exports = router;

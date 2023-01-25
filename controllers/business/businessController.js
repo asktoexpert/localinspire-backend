@@ -12,7 +12,8 @@ const stringUtils = require('../../utils/string-utils');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
 const cloudinaryService = require('../../services/cloudinaryService');
-const User = require('../../models/User');
+const User = require('../../models/user/User');
+const { userPublicFieldsString } = require('../../utils/populate-utils');
 
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
@@ -150,7 +151,6 @@ exports.resizeBusinessPhotos = async (req, res, next) => {
 
 exports.reviewBusiness = async (req, res) => {
   console.log('Req body: ', req.body);
-  // res.json({ status: 'Checking...' });
   const featureRatings = JSON.parse(req.body.featureRatings);
   const photoDescriptions = JSON.parse(req.body.photoDescriptions);
 
@@ -165,17 +165,6 @@ exports.reviewBusiness = async (req, res) => {
   const imagesWithCorrespondingDescription = req.body.photoUrls.map((url, i) => {
     return { photoUrl: url, description: photoDescriptions[i] };
   });
-
-  // const obj = {
-  //   business: new mongoose.Types.ObjectId(req.params.id),
-  //   ...req.body,
-  //   businessRating: +req.body.businessRating,
-  //   // reviewedBy: new mongoose.Types.ObjectId(req.user._id),
-  //   visitedWhen: { month: visitedMonth, year: +visitedYear },
-  //   featureRatings: featureRatingsTransformed,
-  //   images: imagesWithCorrespondingDescription,
-  // };
-  // res.json(obj);
 
   const newReview = await BusinessReview.create({
     business: new mongoose.Types.ObjectId(req.params.id),
@@ -193,27 +182,43 @@ exports.reviewBusiness = async (req, res) => {
 
 exports.getBusinessReviews = async (req, res) => {
   // console.log(req.query);
-  const filter = { business: mongoose.Types.ObjectId(req.params.id) };
+  console.log('Req url', req.url);
+
+  const { page = 1, limit } = req.query;
+  const skip = limit * (page - 1);
+
+  const filters = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
   const sort = req.query.sort?.split(',').join(' ');
 
   if (req.query.rating)
-    filter.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
+    filters.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
 
-  if (req.query.recommends) filter.recommends = req.query.recommends === '1';
-  console.log(filter);
+  if (req.query.recommends) filters.recommends = req.query.recommends === '1';
+  console.log(filters);
 
   try {
-    const reviews = await BusinessReview.find(filter)
-      .sort(sort)
-      .populate([
-        { path: 'reviewedBy', select: 'firstName lastName imgUrl role' },
-        {
-          path: 'likes',
-          populate: { path: 'user', select: 'firstName lastName imgUrl role' },
-        },
-      ]);
+    const responses = await Promise.all([
+      BusinessReview.find(filters).count(),
 
-    res.status(200).json({ status: 'SUCCESS', results: reviews.length, data: reviews });
+      BusinessReview.find(filters)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate([
+          { path: 'reviewedBy', select: userPublicFieldsString },
+          { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+          {
+            path: 'contributions',
+            populate: { path: 'contribution' },
+            strictPopulate: false,
+          },
+        ]),
+    ]);
+
+    const [allDocs, reviews] = responses;
+    res
+      .status(200)
+      .json({ status: 'SUCCESS', results: reviews.length, total: allDocs, data: reviews });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
@@ -239,7 +244,7 @@ exports.toggleBusinessReviewHelpful = async (req, res) => {
     // Find the review
     const review = await BusinessReview.findById(reviewId).populate({
       path: 'likes',
-      populate: { path: 'user', select: 'firstName lastName imgUrl role' },
+      populate: { path: 'user', select: userPublicFieldsString },
     });
     // console.log({ 'Review to like': review });
     // res.json(review.likes);
@@ -294,10 +299,10 @@ exports.getQuestionsAskedAboutBusiness = async (req, res) => {
         .skip(skip)
         .limit(limit)
         .populate([
-          { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+          { path: 'askedBy', select: userPublicFieldsString },
           {
             path: 'answers',
-            populate: { path: 'answeredBy', select: 'firstName lastName imgUrl role' },
+            populate: { path: 'answeredBy', select: userPublicFieldsString },
           },
         ]),
     ]);
@@ -334,7 +339,7 @@ exports.askQuestionAboutBusiness = async (req, res) => {
 
     res.status(201).json({
       status: 'SUCCESS',
-      question: await newQuestion.populate('askedBy', 'firstName lastName imgUrl role'),
+      question: await newQuestion.populate('askedBy', userPublicFieldsString),
     });
   } catch (err) {
     console.log(err);
@@ -359,10 +364,10 @@ exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
       update,
       options
     ).populate([
-      { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+      { path: 'askedBy', select: userPublicFieldsString },
       {
         path: 'answers',
-        populate: { path: 'answeredBy', select: 'firstName lastName imgUrl role' },
+        populate: { path: 'answeredBy', select: userPublicFieldsString },
       },
     ]);
     res.status(200).json({ status: 'SUCCESS', question });
@@ -375,7 +380,7 @@ exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
 exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
   try {
     const question = await BusinessQuestion.findById(req.params.questionId).populate([
-      { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+      { path: 'askedBy', select: userPublicFieldsString },
       'answers',
     ]);
     const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
@@ -404,7 +409,7 @@ exports.toggleDislikeAnswerToBusinessQuestion = async (req, res) => {
   console.log('In toggleDislike');
   try {
     const question = await BusinessQuestion.findById(req.params.questionId).populate([
-      { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+      { path: 'askedBy', select: userPublicFieldsString },
       'answers',
     ]);
     const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
@@ -430,12 +435,21 @@ exports.toggleDislikeAnswerToBusinessQuestion = async (req, res) => {
 };
 
 exports.getTipsAboutBusiness = async (req, res, next) => {
-  try {
-    const tips = await BusinessReview.find({ business: req.params.id })
-      .select('adviceToFutureVisitors reviewedBy createdAt')
-      .populate('reviewedBy', 'firstName lastName imgUrl role');
+  console.log('Req url in getTipsAboutBusiness', req.url);
+  const { page = 1, limit } = req.query;
+  const skip = limit * (page - 1);
 
-    res.status(200).json({ status: 'SUCCESS', results: tips.length, data: tips });
+  try {
+    const responses = await Promise.all([
+      BusinessReview.find({ business: req.params.id }).count(),
+      BusinessReview.find({ business: req.params.id })
+        .skip(skip)
+        .limit(limit)
+        .select('adviceToFutureVisitors reviewedBy createdAt')
+        .populate('reviewedBy', userPublicFieldsString),
+    ]);
+
+    res.status(200).json({ status: 'SUCCESS', total: responses[0], data: responses[1] });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

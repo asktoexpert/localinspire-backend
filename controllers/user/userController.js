@@ -1,5 +1,5 @@
 const fs = require('fs');
-const User = require('../../models/User');
+const User = require('../../models/user/User');
 const stringUtils = require('../../utils/string-utils');
 const authController = require('../authController');
 const authQueries = require('../../databases/redis/queries/auth.queries');
@@ -337,5 +337,51 @@ exports.resetPassword = async (req, res) => {
       msg: err.message,
       error: err,
     });
+  }
+};
+
+exports.updateUserLocation = async (req, res) => {
+  console.log('Location body: ', req.body);
+
+  try {
+    const result = await User.findByIdAndUpdate(
+      req.user._id,
+      { location: req.body },
+      { new: true }
+    );
+    console.log('Update location result: ', result);
+    res.status(200).json({ status: 'SUCCESS' });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.addContribution = async (req, res) => {
+  console.log('Add contribution body: ', req.body);
+
+  try {
+    const user = await User.findById(req.user._id);
+    let updatedUser;
+
+    if (user?.contributions?.length >= 0) {
+      updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { $push: { contributions: req.body } },
+        { new: true }
+      );
+    } else {
+      updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { contributions: [req.body] } },
+        { new: true }
+      );
+    }
+
+    console.log('Updated user: ', updatedUser);
+    res.status(200).json({ status: 'SUCCESS' });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
   }
 };

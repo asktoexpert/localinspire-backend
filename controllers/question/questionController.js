@@ -5,7 +5,7 @@ const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/Answer');
-const User = require('../../models/User');
+const User = require('../../models/user/User');
 
 exports.getQuestionDetails = async (req, res, next) => {
   const filters = { _id: req.params.id };
