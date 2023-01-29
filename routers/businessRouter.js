@@ -4,6 +4,10 @@ const businessController = require('../controllers/business/businessController')
 const authController = require('../controllers/authController');
 const businessCacheController = require('../controllers/business/businessCacheController');
 
+const BusinessQuestion = require('../models/business/BusinessQuestion');
+const BusinessReview = require('../models/business/BusinessReview');
+const Business = require('../models/business/Business');
+
 const multer = require('multer');
 
 // const multerStorage = multer.diskStorage({
@@ -51,17 +55,9 @@ router.route('/:id/questions/:qid').get(async (req, res) => {
 
 // Review business - POST
 // Get business reviews - GET
-router
-  .route('/:id/reviews')
-  .post(
-    authController.protect,
-    upload.array('photos', 7),
-    businessController.resizeBusinessPhotos,
-    businessController.reviewBusiness
-  )
-  .get(businessController.getBusinessReviews);
+router.route('/:id/reviews').get(businessController.getBusinessReviews);
 
-router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
+// router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
 
 router
   .route('/reviews/:reviewId/like')
@@ -94,49 +90,23 @@ router.route('/:id/questions').get(businessController.getQuestionsAskedAboutBusi
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 
 // FOR DEV ONLY
-router.route('/reviews/dev-edit').patch(businessController.editReviewDev);
+router.route('/reviews/dev/:id').get(async (req, res) => {
+  const reviews = await BusinessReview.find({ business: req.params.id });
+  const reviewsCount = reviews.length;
+
+  const sumRatings = reviews.reduce((acc, rev) => acc + rev.businessRating, 0);
+  const avgRating = sumRatings / reviewsCount;
+
+  const business = await Business.findByIdAndUpdate(
+    req.params.id,
+    { $set: { avgRating } },
+    { new: true }
+  );
+
+  res.json({ business });
+  // const business = await Business.findByIdAndUpdate(req.params.id, { avgRating: })
+});
 
 // ################# DEV ######################
-const cloudinaryService = require('../services/cloudinaryService');
-const sharp = require('sharp');
-const { v4: uuidv4 } = require('uuid');
-const BusinessQuestion = require('../models/business/BusinessQuestion');
-
-router.post('/upload', upload.array('photos', 12), async (req, res) => {
-  try {
-    const businessPhotos = [];
-
-    req.files.forEach((file, i) => {
-      const fileName = `public/img/businesses/business-${uuidv4()}.jpeg`;
-
-      sharp(file.buffer)
-        .resize(500, 500)
-        .jpeg({ quality: 90 })
-        .toFile(fileName, (err, info) => {
-          console.log('In toFile: ', { err, errMsg: err?.message, info });
-        });
-
-      businessPhotos.push(fileName);
-    });
-
-    console.log({ businessPhotos });
-
-    const reqs = businessPhotos.map(async img => {
-      console.log({ img });
-      return cloudinaryService.upload({ dir: 'businesses', filePath: img });
-    });
-
-    const results = await Promise.all(reqs);
-
-    console.log({ results });
-    res.json({ results });
-
-    // console.log({ 'req.files': req.files, 'req.body': req.body });
-    // res.json({ 'req.body': req.body });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-});
 
 module.exports = router;

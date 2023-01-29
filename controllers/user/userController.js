@@ -29,6 +29,22 @@ const emailAccountConfirmationLink = async (email, firstName) => {
   await authQueries.cacheVerificationForAccountConfirmation(email, verificationCode);
 };
 
+exports.addUserContribution = async (userId, contributionId, contributionType) => {
+  const newContribution = { contribution: contributionId, model: contributionType };
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $push: { contributions: newContribution } },
+      { new: true }
+    );
+    console.log('Updated user contribution: ', updatedUser);
+  } catch (err) {
+    console.log('Error in adding contribution: ', err);
+    throw err;
+  }
+};
+
 exports.resizeUserPhoto = async (req, res, next) => {
   try {
     console.log({ 'req.file': req.file });
@@ -350,35 +366,6 @@ exports.updateUserLocation = async (req, res) => {
       { new: true }
     );
     console.log('Update location result: ', result);
-    res.status(200).json({ status: 'SUCCESS' });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ status: 'FAIL' });
-  }
-};
-
-exports.addContribution = async (req, res) => {
-  console.log('Add contribution body: ', req.body);
-
-  try {
-    const user = await User.findById(req.user._id);
-    let updatedUser;
-
-    if (user?.contributions?.length >= 0) {
-      updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        { $push: { contributions: req.body } },
-        { new: true }
-      );
-    } else {
-      updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        { $set: { contributions: [req.body] } },
-        { new: true }
-      );
-    }
-
-    console.log('Updated user: ', updatedUser);
     res.status(200).json({ status: 'SUCCESS' });
   } catch (err) {
     console.log(err);

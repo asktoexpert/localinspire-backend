@@ -27,6 +27,7 @@ exports.genRefreshToken = () => {
 exports.protect = async (req, res, next) => {
   try {
     const token = req.headers?.authorization?.replace('Bearer ', '');
+    console.log({ token });
     const { id: userId } = await Promise.resolve(jwt.verify(token, process.env.JWT_SECRET));
 
     const user = await User.findById(userId);
@@ -36,7 +37,7 @@ exports.protect = async (req, res, next) => {
     console.log('User authenticated');
     next();
   } catch (err) {
-    console.log(err.message);
+    console.log(err);
     // if (err.message === 'jwt malformed') {
     res.status(401).json({ msg: 'AUTH_ERROR' });
     // }
@@ -73,25 +74,6 @@ exports.verifyCredentials = (req, res, next) => {
   }
   next();
 };
-
-// const googleVerify = async (token, clientUser) => {
-//   const url = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`;
-
-//   const handleResponse = function (err, res, body) {
-//     if (err) this.reject(err);
-//     const result = JSON.parse(body);
-//     console.log('Google Result: ', result);
-
-//     if (result.error) this.reject({ success: false });
-//     if (result.user_id === clientUser.id && result.email === clientUser.email)
-//       this.resolve({ success: true });
-//     this.reject({ success: false });
-//   };
-
-//   return new Promise((resolve, reject) => {
-//     request(url, handleResponse.bind({ resolve, reject }));
-//   });
-// };
 
 const googleVerify = async function (accessToken) {
   const url = 'https://www.googleapis.com/oauth2/v3/userinfo';

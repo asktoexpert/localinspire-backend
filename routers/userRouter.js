@@ -38,6 +38,6 @@ router
   .route('/update-user-location')
   .patch(authController.protect, userController.updateUserLocation);
 
-router.route('/contribute').patch(authController.protect, userController.addContribution);
+router.route('/contribute').patch(authController.protect, userController.addUserContribution);
 
 module.exports = router;

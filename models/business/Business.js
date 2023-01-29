@@ -23,6 +23,10 @@ const businessSchema = new mongoose.Schema({
 
   // New
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  avgRating: { type: Number, default: 0 },
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
 });
 
 // businessSchema.index({ coordinates: '2dsphere' });

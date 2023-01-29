@@ -1,6 +1,5 @@
 const fs = require('fs');
 const mongoose = require('mongoose');
-const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 
 const Business = require('../../models/business/Business');
@@ -14,6 +13,7 @@ const arrayUtils = require('../../utils/arrayUtils');
 const cloudinaryService = require('../../services/cloudinaryService');
 const User = require('../../models/user/User');
 const { userPublicFieldsString } = require('../../utils/populate-utils');
+const userController = require('../user/userController');
 
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
@@ -105,81 +105,6 @@ exports.getBusinessById = async (req, res) => {
   }
 };
 
-exports.resizeBusinessPhotos = async (req, res, next) => {
-  if (!req.files.length) return next();
-
-  if (req.files.some(f => !f.mimetype.startsWith('image/')))
-    return res.json({ error: 'Only images are allowed' });
-
-  try {
-    console.log({ 'req.files': req.files, 'req.body': req.body });
-
-    req.body.photoUrls = [];
-
-    await Promise.all(
-      req.files.map(async (rawFile, i) => {
-        const filename = `business-${req.params.id}-${Date.now()}-${i}.jpeg`;
-        const filePath = `public/img/businesses/${filename}`;
-
-        // 1) Resize request files
-        const sharpResult = await sharp(rawFile.buffer)
-          .resize(2000, 1333)
-          .jpeg({ quality: 90 })
-          .toFormat('jpeg')
-          .toFile(filePath);
-        console.log({ sharpResult });
-
-        // 2) Upload server files to cloudinary server
-        const uploadResult = await cloudinaryService.upload({ dir: 'businesses', filePath });
-        console.log({ uploadResult });
-        req.body.photoUrls.push(uploadResult.secure_url);
-
-        // 3) Delete file from local server
-        fs.unlink(filePath, err => {
-          if (err) return console.log('Could not delete file from server: ', err);
-          console.log('Business image deleted from server ');
-        });
-      })
-    );
-
-    next();
-  } catch (err) {
-    console.log('Error log: ', err);
-    res.json({ error: err.message });
-  }
-};
-
-exports.reviewBusiness = async (req, res) => {
-  console.log('Req body: ', req.body);
-  const featureRatings = JSON.parse(req.body.featureRatings);
-  const photoDescriptions = JSON.parse(req.body.photoDescriptions);
-
-  if (photoDescriptions?.length < req.body.photoUrls?.length)
-    return res.json({ status: 'FAIL', msg: 'Please describe all uploaded photos' });
-
-  const [visitedMonth, visitedYear] = req.body.visitedWhen.split(' ');
-  const featureRatingsTransformed = Object.entries(featureRatings).map(([f, r]) => ({
-    feature: f,
-    rating: r,
-  }));
-  const imagesWithCorrespondingDescription = req.body.photoUrls.map((url, i) => {
-    return { photoUrl: url, description: photoDescriptions[i] };
-  });
-
-  const newReview = await BusinessReview.create({
-    business: new mongoose.Types.ObjectId(req.params.id),
-    ...req.body,
-    reviewedBy: new mongoose.Types.ObjectId(req.user._id),
-    businessRating: +req.body.businessRating,
-    recommends: req.body.recommends === 'yes',
-    visitedWhen: { month: visitedMonth, year: +visitedYear },
-    featureRatings: featureRatingsTransformed,
-    images: imagesWithCorrespondingDescription,
-  });
-
-  res.status(201).json({ status: 'SUCCESS', review: newReview });
-};
-
 exports.getBusinessReviews = async (req, res) => {
   // console.log(req.query);
   console.log('Req url', req.url);
@@ -207,31 +132,14 @@ exports.getBusinessReviews = async (req, res) => {
         .populate([
           { path: 'reviewedBy', select: userPublicFieldsString },
           { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
-          {
-            path: 'contributions',
-            populate: { path: 'contribution' },
-            strictPopulate: false,
-          },
+          { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
         ]),
     ]);
 
-    const [allDocs, reviews] = responses;
+    const [allCount, reviews] = responses;
     res
       .status(200)
-      .json({ status: 'SUCCESS', results: reviews.length, total: allDocs, data: reviews });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
-
-exports.getUserReviewOnBusiness = async (req, res) => {
-  try {
-    const userReview = await BusinessReview.findOne({
-      business: req.params.id,
-      reviewedBy: req.query.uid,
-    });
-    res.status(200).json({ status: 'SUCCESS', userReview });
+      .json({ status: 'SUCCESS', results: reviews.length, total: allCount, data: reviews });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
@@ -246,8 +154,6 @@ exports.toggleBusinessReviewHelpful = async (req, res) => {
       path: 'likes',
       populate: { path: 'user', select: userPublicFieldsString },
     });
-    // console.log({ 'Review to like': review });
-    // res.json(review.likes);
 
     // If user has liked the review before..
     const indexOfUser = review.likes.findIndex(
@@ -337,6 +243,12 @@ exports.askQuestionAboutBusiness = async (req, res) => {
       business: businessId,
     });
 
+    await userController.addUserContribution(
+      req.user._id,
+      newQuestion._id,
+      'BusinessQuestion'
+    );
+
     res.status(201).json({
       status: 'SUCCESS',
       question: await newQuestion.populate('askedBy', userPublicFieldsString),
@@ -370,6 +282,9 @@ exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
         populate: { path: 'answeredBy', select: userPublicFieldsString },
       },
     ]);
+
+    await userController.addUserContribution(req.user._id, newAnswer._id, 'BusinessAnswer');
+
     res.status(200).json({ status: 'SUCCESS', question });
   } catch (err) {
     console.log(err);
