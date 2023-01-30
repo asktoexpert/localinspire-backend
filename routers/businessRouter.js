@@ -63,16 +63,6 @@ router
   .route('/reviews/:reviewId/like')
   .post(authController.protect, businessController.toggleBusinessReviewHelpful);
 
-// Ask question about business
-router
-  .route('/:id/ask')
-  .post(authController.protect, businessController.askQuestionAboutBusiness);
-
-// Answer question about business
-router
-  .route('/questions/:questionId/answer')
-  .post(authController.protect, businessController.addAnswerToQuestionAboutBusiness);
-
 // Toggle like answer to business question
 router
   .route('/questions/:questionId/answers/:answerId/like')

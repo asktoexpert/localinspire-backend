@@ -228,69 +228,7 @@ exports.getQuestionsAskedAboutBusiness = async (req, res) => {
   }
 };
 
-exports.askQuestionAboutBusiness = async (req, res) => {
-  const { id: businessId } = req.params;
 
-  try {
-    if (!(await Business.findById(businessId)))
-      return res.status(404).json({ status: 'FAIL', msg: 'Business not found' });
-
-    // In the future, check if the loggedin user owns this business. If so, dont allow him to ask question.
-
-    const newQuestion = await BusinessQuestion.create({
-      questionText: req.body.question,
-      askedBy: req.user._id,
-      business: businessId,
-    });
-
-    await userController.addUserContribution(
-      req.user._id,
-      newQuestion._id,
-      'BusinessQuestion'
-    );
-
-    res.status(201).json({
-      status: 'SUCCESS',
-      question: await newQuestion.populate('askedBy', userPublicFieldsString),
-    });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
-
-exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
-  console.log(req.body);
-  try {
-    const newAnswer = await BusinessAnswer.create({
-      answerText: req.body.answer,
-      answeredBy: req.user._id,
-    });
-    console.log({ newAnswer });
-
-    const update = { $push: { answers: newAnswer._id } };
-    const options = { runValidators: true, new: true };
-
-    const question = await BusinessQuestion.findByIdAndUpdate(
-      req.params.questionId,
-      update,
-      options
-    ).populate([
-      { path: 'askedBy', select: userPublicFieldsString },
-      {
-        path: 'answers',
-        populate: { path: 'answeredBy', select: userPublicFieldsString },
-      },
-    ]);
-
-    await userController.addUserContribution(req.user._id, newAnswer._id, 'BusinessAnswer');
-
-    res.status(200).json({ status: 'SUCCESS', question });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
 
 exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
   try {
