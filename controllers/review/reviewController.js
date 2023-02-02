@@ -13,6 +13,27 @@ const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/Answer');
 const User = require('../../models/user/User');
 
+exports.getReview = async (req, res, next) => {
+  try {
+    const review = await BusinessReview.findById(req.params.id).populate([
+      { path: 'reviewedBy', userPublicFieldsString },
+      {
+        path: 'likes',
+        populate: {
+          path: 'user',
+          select: userPublicFieldsString,
+        },
+      },
+    ]);
+    if (!review) res.status(404).json({ status: 'NOT_FOUND', review });
+
+    res.json({ status: 'SUCCESS', review });
+  } catch (err) {
+    console.log(err);
+    res.json({ status: 'ERROR', msg: err.message });
+  }
+};
+
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);
   if (!req.files.length) return next();
@@ -129,6 +150,49 @@ exports.addPhotosOfBusiness = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.json(err);
+  }
+};
+
+exports.getBusinessReviews = async (req, res) => {
+  // console.log(req.query);
+  console.log('Req url', req.url);
+
+  const { page = 1, limit } = req.query;
+  const skip = limit * (page - 1);
+
+  const filters = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
+
+  let sort = '-createdAt ' + (req.query.sort?.split(',').join(' ') || '');
+  console.log('Reviews sort: ', sort);
+
+  if (req.query.rating)
+    filters.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
+
+  if (req.query.recommends) filters.recommends = req.query.recommends === '1';
+  console.log(filters);
+
+  try {
+    const responses = await Promise.all([
+      BusinessReview.find(filters).count(),
+
+      BusinessReview.find(filters)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate([
+          { path: 'reviewedBy', select: userPublicFieldsString },
+          { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+          { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
+        ]),
+    ]);
+
+    const [allCount, reviews] = responses;
+    res
+      .status(200)
+      .json({ status: 'SUCCESS', results: reviews.length, total: allCount, data: reviews });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
   }
 };
 

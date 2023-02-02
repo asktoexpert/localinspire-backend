@@ -53,10 +53,6 @@ router.route('/:id/questions/:qid').get(async (req, res) => {
   res.json(await BusinessQuestion.findById(req.params.qid));
 });
 
-// Review business - POST
-// Get business reviews - GET
-router.route('/:id/reviews').get(businessController.getBusinessReviews);
-
 // router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
 
 router

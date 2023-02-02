@@ -68,5 +68,5 @@ const businessReviewSchema = mongoose.Schema(
   { timestamps: true, toJSON: { virtuals: true } }
 );
 
-const BusinessReview = new mongoose.model('BusinessReview', businessReviewSchema);
+const BusinessReview = mongoose.model('BusinessReview', businessReviewSchema);
 module.exports = BusinessReview;

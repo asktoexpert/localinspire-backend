@@ -105,47 +105,6 @@ exports.getBusinessById = async (req, res) => {
   }
 };
 
-exports.getBusinessReviews = async (req, res) => {
-  // console.log(req.query);
-  console.log('Req url', req.url);
-
-  const { page = 1, limit } = req.query;
-  const skip = limit * (page - 1);
-
-  const filters = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
-  const sort = req.query.sort?.split(',').join(' ');
-
-  if (req.query.rating)
-    filters.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
-
-  if (req.query.recommends) filters.recommends = req.query.recommends === '1';
-  console.log(filters);
-
-  try {
-    const responses = await Promise.all([
-      BusinessReview.find(filters).count(),
-
-      BusinessReview.find(filters)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .populate([
-          { path: 'reviewedBy', select: userPublicFieldsString },
-          { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
-          { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
-        ]),
-    ]);
-
-    const [allCount, reviews] = responses;
-    res
-      .status(200)
-      .json({ status: 'SUCCESS', results: reviews.length, total: allCount, data: reviews });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
-
 exports.toggleBusinessReviewHelpful = async (req, res) => {
   const { reviewId } = req.params;
   try {
@@ -227,8 +186,6 @@ exports.getQuestionsAskedAboutBusiness = async (req, res) => {
     res.json({ error: err });
   }
 };
-
-
 
 exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
   try {

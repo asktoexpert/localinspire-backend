@@ -18,6 +18,11 @@ router
     reviewController.reviewBusiness
   );
 
+router.route('/:id').get(reviewController.getReview);
+
+// Get reviews made on business
+router.route('/businesses/:id/').get(reviewController.getBusinessReviews);
+
 router
   .route('/by-user/on/:businessId/add-photos')
   .patch(
