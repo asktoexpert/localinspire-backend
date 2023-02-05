@@ -18,6 +18,10 @@ router
     reviewController.reviewBusiness
   );
 
+router
+  .route('/made-by-user')
+  .get(authController.protect, reviewController.getAllReviewsMadeByUser);
+
 router.route('/:id').get(reviewController.getReview);
 
 // Get reviews made on business
@@ -31,10 +35,6 @@ router
     reviewController.resizeReviewPhotos,
     reviewController.addPhotosOfBusiness
   );
-
-router
-  .route('/made-by-user')
-  .get(authController.protect, reviewController.getAllReviewsMadeByUser);
 
 router
   .route('/on/:businessId/by-user')

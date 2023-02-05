@@ -10,22 +10,16 @@ const { v4: uuidv4 } = require('uuid');
 const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/Answer');
+const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
 
 exports.getReview = async (req, res, next) => {
   try {
     const review = await BusinessReview.findById(req.params.id).populate([
       { path: 'reviewedBy', userPublicFieldsString },
-      {
-        path: 'likes',
-        populate: {
-          path: 'user',
-          select: userPublicFieldsString,
-        },
-      },
+      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
     ]);
-    if (!review) res.status(404).json({ status: 'NOT_FOUND', review });
+    if (!review) return res.status(404).json({ status: 'NOT_FOUND', review });
 
     res.json({ status: 'SUCCESS', review });
   } catch (err) {
@@ -96,9 +90,12 @@ exports.reviewBusiness = async (req, res) => {
     return { photoUrl: url, description: photoDescriptions[i] };
   });
 
+  console.log('Review text: ', req.body.review.split('\n'));
+
   const newReview = await BusinessReview.create({
     business: new mongoose.Types.ObjectId(req.params.businessId),
     ...req.body,
+    review: req.body.review.split('\n'),
     reviewedBy: new mongoose.Types.ObjectId(req.user._id),
     businessRating: +req.body.businessRating,
     recommends: req.body.recommends === 'yes',
@@ -213,7 +210,10 @@ exports.getUserReviewOnBusiness = async (req, res) => {
 exports.getAllReviewsMadeByUser = async (req, res) => {
   try {
     const userReviews = await BusinessReview.find({ reviewedBy: req.user._id });
-
+    // .populate({
+    //   path: 'business',
+    //   select: 'avgRating',
+    // });
     res
       .status(200)
       .json({ status: 'SUCCESS', results: userReviews.length, reviews: userReviews });

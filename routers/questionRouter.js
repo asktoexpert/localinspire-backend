@@ -1,20 +1,34 @@
 const mongoose = require('mongoose');
 const express = require('express');
-const questionRouter = require('../controllers/question/questionController');
+const questionController = require('../controllers/question/questionController');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-// Ask question about business
 router
   .route('/about/:businessId')
-  .post(authController.protect, questionRouter.askQuestionAboutBusiness);
+  .post(authController.protect, questionController.askQuestionAboutBusiness) // Ask question about business
+  .get(questionController.getQuestionsAskedAboutBusiness); // Get all questions asked about a business
 
-router.route('/:id').get(questionRouter.getQuestionDetails);
+router.route('/:id').get(questionController.getQuestionDetails);
 
 router
   .route('/:id/answers')
-  .get(questionRouter.getAnswersToQuestion)
-  .post(authController.protect, questionRouter.addAnswerToQuestionAboutBusiness); // Answer question about business
+  .get(questionController.getAnswersToQuestion) // Get answers to question
+  .post(authController.protect, questionController.addAnswerToQuestionAboutBusiness); // Answer question about business
+
+router
+  .route('/:id/answers/most-helpful')
+  .get(questionController.getMostHelpfulAnswerToQuestion);
+
+// Toggle like answer to business question
+router
+  .route('/:questionId/answers/:answerId/like')
+  .post(authController.protect, questionController.toggleLikeAnswerToBusinessQuestion);
+
+// Toggle dislike answer to business question
+router
+  .route('/:questionId/answers/:answerId/dislike')
+  .post(authController.protect, questionController.toggleDislikeAnswerToBusinessQuestion);
 
 module.exports = router;

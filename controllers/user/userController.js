@@ -38,7 +38,7 @@ exports.addUserContribution = async (userId, contributionId, contributionType) =
       { $push: { contributions: newContribution } },
       { new: true }
     );
-    console.log('Updated user contribution: ', updatedUser);
+    // console.log('Updated user contribution: ', updatedUser);
   } catch (err) {
     console.log('Error in adding contribution: ', err);
     throw err;
@@ -365,7 +365,7 @@ exports.updateUserLocation = async (req, res) => {
       { location: req.body },
       { new: true }
     );
-    console.log('Update location result: ', result);
+    // console.log('Update location result: ', result);
     res.status(200).json({ status: 'SUCCESS' });
   } catch (err) {
     console.log(err);

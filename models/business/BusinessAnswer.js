@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const businessAnswerSchema = new mongoose.Schema(
   {
-    answerText: { type: String, minlength: 1, maxlength: 180 },
+    question: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessQuestion' },
+    answerText: [String],
     answeredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     likes: [{ type: mongoose.Schema.Types.ObjectId }],
     dislikes: [{ type: mongoose.Schema.Types.ObjectId }],

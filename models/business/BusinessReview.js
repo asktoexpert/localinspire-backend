@@ -17,7 +17,7 @@ const businessReviewSchema = mongoose.Schema(
       maxlength: 60,
       required: [true, 'A review title is required'],
     },
-    review: { type: String, required: true },
+    review: [String],
     visitType: {
       type: String,
       enum: ['Solo', 'Couples', 'Family', 'Friends', 'Business'],

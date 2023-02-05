@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/Answer');
+const BusinessAnswer = require('../../models/business/BusinessAnswer');
 
 const stringUtils = require('../../utils/string-utils');
 const businessQueries = require('../../databases/redis/queries/business.queries');
@@ -65,6 +65,7 @@ exports.findBusinesses = async function (req, res, next) {
       city: { $regex: `^${cityName}`, $options: 'i' },
       stateCode: stateCode.toUpperCase(),
     });
+    // .select({ avgRating: 1 });
 
     const pagedBusinesses = await arrayUtils.paginate({ array: businesses, page, limit });
 
@@ -143,106 +144,6 @@ exports.toggleBusinessReviewHelpful = async (req, res) => {
 // exports.respondToReviewAsBusinessOwner = async (req, res) => {
 
 // }
-
-exports.getQuestionsAskedAboutBusiness = async (req, res) => {
-  const { page = 1, limit } = req.query;
-  const skip = limit * (page - 1);
-
-  try {
-    console.log(req.query);
-    const sort = req.query.sort?.split(',').join(' ').trim();
-    console.log({ sort, 'req.query.sort': req.query.sort });
-
-    const business = await Business.findById(req.params.id);
-    if (!business) return res.status(404).json({ status: 'NOT_FOUND' });
-
-    const [questionsCount, questions] = await Promise.all([
-      BusinessQuestion.find({ business: req.params.id }).count(),
-      BusinessQuestion.find({ business: req.params.id })
-        .sort(sort)
-        .select('-business')
-        .skip(skip)
-        .limit(limit)
-        .populate([
-          { path: 'askedBy', select: userPublicFieldsString },
-          {
-            path: 'answers',
-            populate: { path: 'answeredBy', select: userPublicFieldsString },
-          },
-        ]),
-    ]);
-
-    if (sort?.includes('-answersCount')) {
-      questions.sort((prev, next) => next.answers.length - prev.answers.length);
-    }
-
-    res.status(200).json({
-      status: 'SUCCESS',
-      total: questionsCount,
-      data: questions,
-    });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
-
-exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
-  try {
-    const question = await BusinessQuestion.findById(req.params.questionId).populate([
-      { path: 'askedBy', select: userPublicFieldsString },
-      'answers',
-    ]);
-    const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
-
-    // If user has liked before
-    if (answer.likes.includes(req.user._id)) {
-      answer.likes = answer.likes.filter(id => id.toString() !== req.user._id.toString());
-    } else {
-      answer.likes.push(req.user._id); // Add him to the array of likers
-      answer.dislikes = answer.dislikes.filter(
-        id => id.toString() !== req.user._id.toString()
-      );
-    }
-
-    await answer.save();
-    const { likes, dislikes } = answer;
-
-    res.json({ status: 'SUCCESS', likes, dislikes });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
-
-exports.toggleDislikeAnswerToBusinessQuestion = async (req, res) => {
-  console.log('In toggleDislike');
-  try {
-    const question = await BusinessQuestion.findById(req.params.questionId).populate([
-      { path: 'askedBy', select: userPublicFieldsString },
-      'answers',
-    ]);
-    const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
-
-    // If user disliked before
-    if (answer.dislikes.includes(req.user._id)) {
-      answer.dislikes = answer.dislikes.filter(
-        id => id.toString() !== req.user._id.toString()
-      );
-    } else {
-      answer.dislikes.push(req.user._id); // Add him to the dislikers list
-      answer.likes = answer.likes.filter(id => id.toString() !== req.user._id.toString());
-    }
-
-    await answer.save();
-    const { likes, dislikes } = answer;
-
-    res.json({ status: 'SUCCESS', likes, dislikes });
-  } catch (err) {
-    console.log(err);
-    res.json({ error: err });
-  }
-};
 
 exports.getTipsAboutBusiness = async (req, res, next) => {
   console.log('Req url in getTipsAboutBusiness', req.url);

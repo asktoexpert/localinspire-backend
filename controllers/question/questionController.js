@@ -4,13 +4,14 @@ const mongoose = require('mongoose');
 const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/Answer');
+const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
 const { userPublicFieldsString } = require('../../utils/populate-utils');
 const userController = require('../user/userController');
 
 exports.askQuestionAboutBusiness = async (req, res) => {
   const { businessId } = req.params;
+  const paragraphs = req.body.question?.split('\n');
 
   try {
     if (!(await Business.findById(businessId)))
@@ -19,7 +20,7 @@ exports.askQuestionAboutBusiness = async (req, res) => {
     // In the future, check if the loggedin user owns this business. If so, dont allow him to ask question.
 
     const newQuestion = await BusinessQuestion.create({
-      questionText: req.body.question,
+      questionText: paragraphs,
       askedBy: req.user._id,
       business: businessId,
     });
@@ -32,7 +33,54 @@ exports.askQuestionAboutBusiness = async (req, res) => {
 
     res.status(201).json({
       status: 'SUCCESS',
-      question: await newQuestion.populate('askedBy', userPublicFieldsString),
+      question: await newQuestion.populate([
+        { path: 'askedBy', select: userPublicFieldsString },
+        { path: 'business', select: 'businessName city stateCode' },
+      ]),
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.getQuestionsAskedAboutBusiness = async (req, res) => {
+  const { page = 1, limit } = req.query;
+  const skip = limit * (page - 1);
+
+  console.log('Req url: ', req.url);
+
+  try {
+    console.log({ 'req.query': req.query });
+    let sort = req.query.sort?.split(',').join(' ').trim() || '';
+
+    const business = await Business.findById(req.params.businessId);
+    if (!business) return res.status(404).json({ status: 'NOT_FOUND' });
+
+    const [questionsCount, questions] = await Promise.all([
+      BusinessQuestion.find({ business: req.params.businessId }).count(),
+      BusinessQuestion.find({ business: req.params.businessId })
+        .sort(sort)
+        .select('-business')
+        .skip(skip)
+        .limit(limit)
+        .populate([
+          { path: 'askedBy', select: userPublicFieldsString },
+          {
+            path: 'answers',
+            populate: { path: 'answeredBy', select: userPublicFieldsString },
+          },
+        ]),
+    ]);
+
+    if (sort?.includes('-answersCount')) {
+      questions.sort((prev, next) => next.answers.length - prev.answers.length);
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      total: questionsCount,
+      data: questions,
     });
   } catch (err) {
     console.log(err);
@@ -42,8 +90,6 @@ exports.askQuestionAboutBusiness = async (req, res) => {
 
 exports.getQuestionDetails = async (req, res, next) => {
   const filters = { _id: req.params.id };
-  if (req.query.textSearch.length)
-    filters.questionText = { $regex: `^${req.query.textSearch}`, $options: 'i' };
 
   const question = await BusinessQuestion.findOne(filters).populate([
     { path: 'business', select: 'businessName city stateCode' },
@@ -58,37 +104,14 @@ exports.getQuestionDetails = async (req, res, next) => {
   return res.status(200).json({ status: 'SUCCESS', question });
 };
 
-exports.getAnswersToQuestion = async (req, res, next) => {
-  try {
-    console.log('Req url in getAnswersToQuestion', req.url);
-    const { page = 1, limit } = req.query;
-    const skip = limit * (page - 1);
-
-    const [answers, allAnswersCount] = await Promise.all([
-      BusinessAnswer.find({ question: req.params.id })
-        .skip(skip)
-        .limit(limit)
-        .populate('answeredBy', userPublicFieldsString),
-      BusinessAnswer.find({ question: req.params.id }).count(),
-    ]);
-
-    res.status(200).json({
-      status: 'SUCCESS',
-      results: answers.length,
-      total: allAnswersCount,
-      data: answers,
-    });
-  } catch (err) {
-    console.log(err);
-    res.json(err);
-  }
-};
-
 exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
-  console.log(req.body);
+  console.log('Text: ', req.body.answer.split(''));
+  const paragraphs = req.body.answer?.split('\n');
+  console.log({ paragraphs });
   try {
     const newAnswer = await BusinessAnswer.create({
-      answerText: req.body.answer,
+      question: req.params.id,
+      answerText: paragraphs,
       answeredBy: req.user._id,
     });
 
@@ -115,6 +138,119 @@ exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
         userPublicFieldsString
       ),
     });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.getAnswersToQuestion = async (req, res, next) => {
+  try {
+    console.log('Req url in getAnswersToQuestion', req.url);
+    const { page = 1, limit } = req.query;
+    const skip = limit * (page - 1);
+
+    if (!(await BusinessQuestion.findById(req.params.id))) {
+      return res.status(404).json({ status: 'NOT_FOUND', msg: 'Invalid question ID' });
+    }
+
+    const [answers, allAnswersCount] = await Promise.all([
+      BusinessAnswer.find({ question: req.params.id })
+        .sort('-createdAt')
+        .skip(skip)
+        .limit(limit)
+        .populate('answeredBy', userPublicFieldsString),
+
+      BusinessAnswer.find({ question: req.params.id }).count(),
+    ]);
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      results: answers.length,
+      total: allAnswersCount,
+      data: answers,
+    });
+  } catch (err) {
+    console.log(err);
+    res.json(err);
+  }
+};
+
+exports.getMostHelpfulAnswerToQuestion = async (req, res, next) => {
+  console.log('Req url in getMostHelpfulAnswerToQuestion', req.url);
+  try {
+    const mostHelpfulData = await BusinessAnswer.aggregate([
+      { $match: { question: mongoose.Types.ObjectId(req.params.id) } },
+      { $project: { length: { $size: '$likes' } } },
+      { $sort: { length: -1 } },
+      { $limit: 1 },
+    ]);
+    console.log(mostHelpfulData);
+
+    const mostHelpfulAnswer = await BusinessAnswer.findById(
+      mostHelpfulData?.[0]?._id
+    ).populate('answeredBy', userPublicFieldsString);
+
+    res.status(200).json({ status: 'SUCCESS', mostHelpfulAnswer });
+  } catch (err) {
+    console.log(err);
+    res.json(err);
+  }
+};
+
+exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
+  try {
+    const question = await BusinessQuestion.findById(req.params.questionId).populate([
+      { path: 'askedBy', select: userPublicFieldsString },
+      'answers',
+    ]);
+    console.log('Question found: ', question);
+    const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
+    console.log('Answer found: ', answer);
+
+    // If user has liked before
+    if (answer.likes.includes(req.user._id)) {
+      answer.likes = answer.likes.filter(id => id.toString() !== req.user._id.toString());
+    } else {
+      answer.likes.push(req.user._id); // Add him to the array of likers
+      answer.dislikes = answer.dislikes.filter(
+        id => id.toString() !== req.user._id.toString()
+      );
+    }
+
+    await answer.save();
+    const { likes, dislikes } = answer;
+
+    res.json({ status: 'SUCCESS', likes, dislikes });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.toggleDislikeAnswerToBusinessQuestion = async (req, res) => {
+  console.log('In toggleDislike');
+  try {
+    const question = await BusinessQuestion.findById(req.params.questionId).populate([
+      { path: 'askedBy', select: userPublicFieldsString },
+      'answers',
+    ]);
+    const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
+
+    // If user disliked before
+    if (answer.dislikes.includes(req.user._id)) {
+      answer.dislikes = answer.dislikes.filter(
+        id => id.toString() !== req.user._id.toString()
+      );
+    } else {
+      answer.dislikes.push(req.user._id); // Add him to the dislikers list
+      answer.likes = answer.likes.filter(id => id.toString() !== req.user._id.toString());
+    }
+
+    await answer.save();
+    const { likes, dislikes } = answer;
+
+    res.json({ status: 'SUCCESS', likes, dislikes });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

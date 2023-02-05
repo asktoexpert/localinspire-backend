@@ -48,29 +48,9 @@ router
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);
 
-// TEST: Get business question by business id
-router.route('/:id/questions/:qid').get(async (req, res) => {
-  res.json(await BusinessQuestion.findById(req.params.qid));
-});
-
-// router.get('/:id/user-review', businessController.getUserReviewOnBusiness);
-
 router
   .route('/reviews/:reviewId/like')
   .post(authController.protect, businessController.toggleBusinessReviewHelpful);
-
-// Toggle like answer to business question
-router
-  .route('/questions/:questionId/answers/:answerId/like')
-  .post(authController.protect, businessController.toggleLikeAnswerToBusinessQuestion);
-
-// Toggle dislike answer to business question
-router
-  .route('/questions/:questionId/answers/:answerId/dislike')
-  .post(authController.protect, businessController.toggleDislikeAnswerToBusinessQuestion);
-
-// Get all questions asked about a business
-router.route('/:id/questions').get(businessController.getQuestionsAskedAboutBusiness);
 
 // Get tips from past visitors about a business
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
