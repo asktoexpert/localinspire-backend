@@ -93,7 +93,7 @@ exports.getQuestionDetails = async (req, res, next) => {
 
   const question = await BusinessQuestion.findOne(filters).populate([
     { path: 'business', select: 'businessName city stateCode' },
-    { path: 'askedBy', select: 'firstName lastName imgUrl role' },
+    { path: 'askedBy', select: userPublicFieldsString },
     {
       path: 'answers',
       populate: { path: 'answeredBy', select: 'firstName lastName imgUrl role' },
@@ -191,7 +191,10 @@ exports.getMostHelpfulAnswerToQuestion = async (req, res, next) => {
       mostHelpfulData?.[0]?._id
     ).populate('answeredBy', userPublicFieldsString);
 
-    res.status(200).json({ status: 'SUCCESS', mostHelpfulAnswer });
+    res.status(200).json({
+      status: 'SUCCESS',
+      mostHelpfulAnswer: mostHelpfulAnswer?.likes?.length > 0 ? mostHelpfulAnswer : null,
+    });
   } catch (err) {
     console.log(err);
     res.json(err);
