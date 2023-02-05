@@ -25,7 +25,7 @@ const businessReviewSchema = mongoose.Schema(
     },
     visitedWhen: {
       month: { type: String, required: true },
-      year: { type: Number, enum: [2022], required: true },
+      year: { type: Number, required: true },
     },
     featureRatings: [
       {
