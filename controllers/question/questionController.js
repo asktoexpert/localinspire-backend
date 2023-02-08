@@ -9,6 +9,29 @@ const User = require('../../models/user/User');
 const { userPublicFieldsString } = require('../../utils/populate-utils');
 const userController = require('../user/userController');
 
+const getMostHelpfulAnswerToQuestion = async (q_id, { returnDoc = false }) => {
+  try {
+    const mostHelpfulData = await BusinessAnswer.aggregate([
+      { $match: { question: mongoose.Types.ObjectId(q_id) } },
+      { $project: { likesCount: { $size: '$likes' } } },
+      { $sort: { likesCount: -1 } },
+      { $limit: 1 },
+    ]);
+    console.log(mostHelpfulData); // { _id, likesCount }
+
+    if (!mostHelpfulData.length || mostHelpfulData[0]?.likesCount === 0) return null;
+    if (!returnDoc) return mostHelpfulData[0]._id;
+
+    return await BusinessAnswer.findById(mostHelpfulData?.[0]?._id).populate(
+      'answeredBy',
+      userPublicFieldsString
+    );
+  } catch (err) {
+    console.log(err);
+    res.json(err);
+  }
+};
+
 exports.askQuestionAboutBusiness = async (req, res) => {
   const { businessId } = req.params;
   const paragraphs = req.body.question?.split('\n');
@@ -48,7 +71,7 @@ exports.getQuestionsAskedAboutBusiness = async (req, res) => {
   const { page = 1, limit } = req.query;
   const skip = limit * (page - 1);
 
-  console.log('Req url: ', req.url);
+  console.log('Req url for getQuestionsAskedAboutBusiness: ', req.url);
 
   try {
     console.log({ 'req.query': req.query });
@@ -105,18 +128,17 @@ exports.getQuestionDetails = async (req, res, next) => {
 };
 
 exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
-  console.log('Text: ', req.body.answer.split(''));
   const paragraphs = req.body.answer?.split('\n');
-  console.log({ paragraphs });
+  console.log('Adding new answer to question#', req.params.id);
   try {
     const newAnswer = await BusinessAnswer.create({
       question: req.params.id,
       answerText: paragraphs,
       answeredBy: req.user._id,
     });
-
     const update = { $push: { answers: newAnswer._id } };
     const options = { runValidators: true, new: true };
+
     const question = await BusinessQuestion.findByIdAndUpdate(
       req.params.id,
       update,
@@ -130,6 +152,7 @@ exports.addAnswerToQuestionAboutBusiness = async (req, res) => {
     ]);
 
     await userController.addUserContribution(req.user._id, newAnswer._id, 'BusinessAnswer');
+
     res.status(200).json({
       status: 'SUCCESS',
       question,
@@ -154,7 +177,7 @@ exports.getAnswersToQuestion = async (req, res, next) => {
       return res.status(404).json({ status: 'NOT_FOUND', msg: 'Invalid question ID' });
     }
 
-    const [answers, allAnswersCount] = await Promise.all([
+    const [answers, allAnswersCount, mostHelpfulAnswerId] = await Promise.all([
       BusinessAnswer.find({ question: req.params.id })
         .sort('-createdAt')
         .skip(skip)
@@ -162,38 +185,15 @@ exports.getAnswersToQuestion = async (req, res, next) => {
         .populate('answeredBy', userPublicFieldsString),
 
       BusinessAnswer.find({ question: req.params.id }).count(),
+      getMostHelpfulAnswerToQuestion(req.params.id, { returnDoc: false }),
     ]);
 
     res.status(200).json({
       status: 'SUCCESS',
       results: answers.length,
       total: allAnswersCount,
+      mostHelpfulAnswerId,
       data: answers,
-    });
-  } catch (err) {
-    console.log(err);
-    res.json(err);
-  }
-};
-
-exports.getMostHelpfulAnswerToQuestion = async (req, res, next) => {
-  console.log('Req url in getMostHelpfulAnswerToQuestion', req.url);
-  try {
-    const mostHelpfulData = await BusinessAnswer.aggregate([
-      { $match: { question: mongoose.Types.ObjectId(req.params.id) } },
-      { $project: { length: { $size: '$likes' } } },
-      { $sort: { length: -1 } },
-      { $limit: 1 },
-    ]);
-    console.log(mostHelpfulData);
-
-    const mostHelpfulAnswer = await BusinessAnswer.findById(
-      mostHelpfulData?.[0]?._id
-    ).populate('answeredBy', userPublicFieldsString);
-
-    res.status(200).json({
-      status: 'SUCCESS',
-      mostHelpfulAnswer: mostHelpfulAnswer?.likes?.length > 0 ? mostHelpfulAnswer : null,
     });
   } catch (err) {
     console.log(err);
@@ -224,7 +224,12 @@ exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
     await answer.save();
     const { likes, dislikes } = answer;
 
-    res.json({ status: 'SUCCESS', likes, dislikes });
+    res.json({
+      status: 'SUCCESS',
+      likes,
+      dislikes,
+      mostHelpfulAnswerId: await getMostHelpfulAnswerToQuestion(req.params.questionId, {}),
+    });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
@@ -253,7 +258,12 @@ exports.toggleDislikeAnswerToBusinessQuestion = async (req, res) => {
     await answer.save();
     const { likes, dislikes } = answer;
 
-    res.json({ status: 'SUCCESS', likes, dislikes });
+    res.json({
+      status: 'SUCCESS',
+      likes,
+      dislikes,
+      mostHelpfulAnswerId: await getMostHelpfulAnswerToQuestion(req.params.questionId, {}),
+    });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

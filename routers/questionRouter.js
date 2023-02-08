@@ -17,9 +17,9 @@ router
   .get(questionController.getAnswersToQuestion) // Get answers to question
   .post(authController.protect, questionController.addAnswerToQuestionAboutBusiness); // Answer question about business
 
-router
-  .route('/:id/answers/most-helpful')
-  .get(questionController.getMostHelpfulAnswerToQuestion);
+// router
+//   .route('/:id/answers/most-helpful')
+//   .get(questionController.getMostHelpfulAnswerToQuestion);
 
 // Toggle like answer to business question
 router

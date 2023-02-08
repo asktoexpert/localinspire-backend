@@ -8,6 +8,7 @@ const businessRouter = require('./routers/businessRouter.js');
 const cityRouter = require('./routers/cityRouter');
 const questionRouter = require('./routers/questionRouter');
 const reviewRouter = require('./routers/reviewRouter');
+const reportRouter = require('./routers/reportRouter');
 
 const app = express();
 
@@ -20,15 +21,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json({ extended: true }));
-app.use(bodyParser.text({ type: '/' }));
-
 app.use(express.json());
-app.use(express.json({ extended: true }));
 app.use(express.urlencoded({ extended: false, limit: '20mb' }));
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
@@ -37,6 +31,8 @@ app.use('/api/v1/businesses', businessRouter);
 app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/cities', cityRouter);
 app.use('/api/v1/questions', questionRouter);
+app.use('/api/v1/report', reportRouter);
+
 // app.all('*', (req, res) => {
 //   res.status(400).send(`Invalid url: `, req.originalUrl);
 // });

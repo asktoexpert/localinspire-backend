@@ -107,10 +107,9 @@ exports.getBusinessById = async (req, res) => {
 };
 
 exports.toggleBusinessReviewHelpful = async (req, res) => {
-  const { reviewId } = req.params;
   try {
     // Find the review
-    const review = await BusinessReview.findById(reviewId).populate({
+    const review = await BusinessReview.findById(req.params.reviewId).populate({
       path: 'likes',
       populate: { path: 'user', select: userPublicFieldsString },
     });
@@ -121,19 +120,18 @@ exports.toggleBusinessReviewHelpful = async (req, res) => {
     );
     const userLikedBefore = indexOfUser !== -1;
 
-    // res.json({ userLikedBefore });
-
-    if (userLikedBefore) {
-      review.likes.splice(indexOfUser, 1); // Remove user from the list of likers
-    } else {
-      // Add him to the list of likers
-      review.likes.push({
-        user: await User.findById(req.user._id).select('firstName lastName imgUrl'),
-      });
-    }
+    // Remove user from the list of likers
+    if (userLikedBefore) review.likes.splice(indexOfUser, 1);
+    else review.likes.push({ user: req.user._id }); // Add him to the list of likers
 
     await review.save();
-    res.status(200).json({ status: 'SUCCESS', likes: review.likes });
+
+    const updatedReview = await BusinessReview.findById(req.params.reviewId).populate({
+      path: 'likes',
+      populate: { path: 'user', select: userPublicFieldsString },
+    });
+
+    res.status(200).json({ status: 'SUCCESS', likes: updatedReview.likes });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

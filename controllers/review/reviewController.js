@@ -12,21 +12,7 @@ const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
-
-exports.getReview = async (req, res, next) => {
-  try {
-    const review = await BusinessReview.findById(req.params.id).populate([
-      { path: 'reviewedBy', userPublicFieldsString },
-      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
-    ]);
-    if (!review) return res.status(404).json({ status: 'NOT_FOUND', review });
-
-    res.json({ status: 'SUCCESS', review });
-  } catch (err) {
-    console.log(err);
-    res.json({ status: 'ERROR', msg: err.message });
-  }
-};
+const reviewQueries = require('../../databases/redis/queries/review.queries');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);
@@ -104,7 +90,13 @@ exports.reviewBusiness = async (req, res) => {
     images: imagesWithCorrespondingDescription,
   });
 
-  await userController.addUserContribution(req.user._id, newReview._id, 'BusinessReview');
+  await Promise.all([
+    reviewQueries.cacheBusinessReviewerId(
+      newReview.business.toString(),
+      req.user._id.toString()
+    ),
+    userController.addUserContribution(req.user._id, newReview._id, 'BusinessReview'),
+  ]);
 
   // Update avg business rating
   const reviews = await BusinessReview.find({ business: req.params.businessId });
@@ -184,12 +176,31 @@ exports.getBusinessReviews = async (req, res) => {
     ]);
 
     const [allCount, reviews] = responses;
+
+    if (sort.includes('-likes'))
+      reviews.sort((prev, next) => next.likes.length - prev.likes.length);
+
     res
       .status(200)
       .json({ status: 'SUCCESS', results: reviews.length, total: allCount, data: reviews });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
+  }
+};
+
+exports.getReview = async (req, res, next) => {
+  try {
+    const review = await BusinessReview.findById(req.params.id).populate([
+      { path: 'reviewedBy', userPublicFieldsString },
+      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+    ]);
+    if (!review) return res.status(404).json({ status: 'NOT_FOUND', review });
+
+    res.json({ status: 'SUCCESS', review });
+  } catch (err) {
+    console.log(err);
+    res.json({ status: 'ERROR', msg: err.message });
   }
 };
 
