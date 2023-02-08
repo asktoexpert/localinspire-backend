@@ -27,7 +27,6 @@ exports.report = async (req, res) => {
         )} you're trying to report does not exist`,
       });
     }
-
     await Report.create({
       ...req.body,
       moreExplanation: req.body.moreExplanation?.split('\n'), // In paragraphs
