@@ -58,8 +58,8 @@ exports.findCachedBusinesses = async function (req, res, next) {
     +page,
     +limit,
   ];
-  req.businessSearchParams = { category, cityName, stateCode, page, limit };
-  return next();
+  // req.businessSearchParams = { category, cityName, stateCode, page, limit };
+  // return next();
 
   try {
     if (!category || !cityName || !stateCode)
