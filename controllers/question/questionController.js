@@ -8,6 +8,9 @@ const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
 const { userPublicFieldsString } = require('../../utils/populate-utils');
 const userController = require('../user/userController');
+const {
+  getCachedBusinessReviewers,
+} = require('../../databases/redis/queries/business.queries');
 
 const getMostHelpfulAnswerToQuestion = async (q_id, { returnDoc = false }) => {
   try {
@@ -124,7 +127,10 @@ exports.getQuestionDetails = async (req, res, next) => {
   ]);
 
   if (!question) return res.status(404).json({ status: 'NOT_FOUND' });
-  return res.status(200).json({ status: 'SUCCESS', question });
+
+  const qObj = question.toObject();
+  qObj.business.reviewers = await getCachedBusinessReviewers(qObj.business._id);
+  return res.status(200).json({ status: 'SUCCESS', question: qObj });
 };
 
 exports.addAnswerToQuestionAboutBusiness = async (req, res) => {

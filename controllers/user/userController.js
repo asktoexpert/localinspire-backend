@@ -38,7 +38,6 @@ exports.addUserContribution = async (userId, contributionId, contributionType) =
       { $push: { contributions: newContribution } },
       { new: true }
     );
-    // console.log('Updated user contribution: ', updatedUser);
   } catch (err) {
     console.log('Error in adding contribution: ', err);
     throw err;
@@ -367,6 +366,60 @@ exports.updateUserLocation = async (req, res) => {
     );
     // console.log('Update location result: ', result);
     res.status(200).json({ status: 'SUCCESS' });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.createCollection = async (req, res) => {
+  try {
+    req.user.collections.unshift(req.body);
+    await req.user.save();
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      collections: req.user.collections,
+      newCollectionId: req.user.collections[0]._id,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.getUserCollections = async (req, res) => {
+  try {
+    res.status(200).json({ status: 'SUCCESS', collections: req.user.collections });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.addOrRemoveItemToCollection = async (req, res) => {
+  try {
+    const collection = req.user.collections.find(c => c._id.toString() === req.params.cId);
+
+    if (!collection) {
+      return res.status(404).json({
+        status: 'FAIL',
+        msg: 'This collection does not exist.',
+        summary: 'COLLECTION_NOT_FOUND',
+      });
+    }
+    const itemAlreadyExistsInCollection = collection.items.some(
+      ({ item }) => item.toString() === req.body.item
+    );
+
+    if (!itemAlreadyExistsInCollection) collection.items.unshift(req.body);
+    else
+      collection.items = collection.items.filter(
+        ({ item }) => item.toString() !== req.body.item
+      );
+
+    await req.user.save();
+    res.status(200).json({ status: 'SUCCESS', collections: req.user.collections });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });

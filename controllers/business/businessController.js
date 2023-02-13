@@ -98,7 +98,10 @@ exports.getBusinessById = async (req, res) => {
 
     res.status(found ? 200 : 404).json({
       status: found ? 'SUCCESS' : 'FAIL',
-      data: business || null,
+      data: {
+        ...business.toObject(),
+        reviewers: await businessQueries.getCachedBusinessReviewers(req.params.id),
+      },
     });
   } catch (err) {
     console.log('Error log: ', err);
@@ -152,9 +155,10 @@ exports.getTipsAboutBusiness = async (req, res, next) => {
     const responses = await Promise.all([
       BusinessReview.find({ business: req.params.id }).count(),
       BusinessReview.find({ business: req.params.id })
+        .sort('-createdAt')
         .skip(skip)
         .limit(limit)
-        .select('adviceToFutureVisitors reviewedBy createdAt')
+        .select('adviceToFutureVisitors reviewedBy reviewTitle createdAt')
         .populate('reviewedBy', userPublicFieldsString),
     ]);
 
@@ -165,52 +169,52 @@ exports.getTipsAboutBusiness = async (req, res, next) => {
   }
 };
 
-// ======================== FOR DEV ONLY ========================
-exports.editReviewDev = async (req, res) => {
-  const reviews = await BusinessQuestion
-    .updateOne
-    // _id: {
-    //   $in: [
-    //     '63b33ec7a8606bd48e477346',
-    //     '63b7114abba2c925aa49936e',
-    //     '63b712abbba2c925aa499393',
-    //   ],
-    // },
-    // {$rename:{"recommended":"recommends"}}
-    ();
-  res.json(reviews);
+exports.getReviewersOfBusiness = async (req, res) => {
+  try {
+    const reviewerIds = await businessQueries.getCachedBusinessReviewers(req.params.id);
+    res
+      .status(200)
+      .json({ status: 'SUCCESS', results: reviewerIds?.length, reviewers: reviewerIds });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
 };
-// await Business.updateMany(
-//   {},
-//   [
-//     {
-//       $addFields: {
-//         coordinates: {
-//           type: 'Point',
-//           coordinates: {
-//             $map: {
-//               input: {
-//                 $reverseArray: {
-//                   $split: ['$coordinates', ','],
-//                 },
-//               },
-//               as: 'c',
-//               in: {
-//                 $convert: {
-//                   input: '$$c',
-//                   to: 'double',
-//                   onError: '',
-//                   onNull: '',
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       },
-//     },
-//   ],
-//   {
-//     multi: true,
-//   }
-// );
-// res.send('Done');
+
+exports.getOverallBusinessRatingStats = async (req, res) => {
+  try {
+    const [overallFeatureRatings, recommendsStats] = await Promise.all([
+      BusinessReview.aggregate([
+        { $match: { business: mongoose.Types.ObjectId(req.params.id) } },
+        { $project: { featureRatings: 1 } },
+        { $unwind: '$featureRatings' },
+        {
+          $group: {
+            _id: '$featureRatings.feature',
+            avgRating: { $avg: '$featureRatings.rating' },
+          },
+        },
+      ]),
+
+      BusinessReview.aggregate([
+        { $match: { business: mongoose.Types.ObjectId(req.params.id) } },
+        { $project: { recommends: 1 } },
+        { $group: { _id: '$recommends', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const recommendationStats = {
+      recommends: recommendsStats?.[0]?.count,
+      doesNotRecommend: recommendsStats?.[1]?.count,
+    };
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      overallFeatureRatings,
+      recommendsStats: recommendationStats,
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};

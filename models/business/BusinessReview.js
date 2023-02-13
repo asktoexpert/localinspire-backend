@@ -55,8 +55,6 @@ const businessReviewSchema = mongoose.Schema(
         commentText: { type: String, required: true },
       },
     ],
-
-    // likes: [{ type: mongoose.Schema.Types.ObjectId }],
     likes: [reviewLikesSchema],
 
     businessOwnerResponse: {

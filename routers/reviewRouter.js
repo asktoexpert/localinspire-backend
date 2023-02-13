@@ -5,9 +5,10 @@ const businessController = require('../controllers/business/businessController')
 const authController = require('../controllers/authController');
 const reviewController = require('../controllers/review/reviewController');
 const BusinessReview = require('../models/business/BusinessReview');
+const Business = require('../models/business/Business');
 const {
-  cacheBusinessReviewerId,
-  getBusinessReviewerIds,
+  getBusinessReviewers,
+  addBusinessReviewer,
 } = require('../databases/redis/queries/review.queries');
 const { redisClient } = require('../databases/redis');
 const { business_reviewers_hash } = require('../databases/redis/keys/review.keys');
@@ -16,23 +17,42 @@ const multerStorage = multer.memoryStorage();
 const upload = multer({ storage: multerStorage });
 const router = express.Router();
 
+// router.get('/dev', async (req, res) => {
+//   let reviews = await BusinessReview.aggregate([
+//     { $project: { 'images.photoUrl': 1, business: 1 } },
+//   ]);
+
+//   reviews = reviews.map(r => {
+//     r.images = r.images.map(({ photoUrl }) => photoUrl);
+
+//     return { ...r, business: r.business };
+//   });
+
+//   reviews.map(async r => {
+//     const business = await Business.findById(r.business).select('businessName images');
+//     if (!business.images) business.images = r.images.map(img => ({ imgUrl: img }));
+//     else business.images.push(...r.images.map(img => ({ imgUrl: img })));
+
+//     await business.save();
+//     console.log('Business: ', business);
+//   });
+
+//   res.json(reviews);
+// });
 router.get('/dev', async (req, res) => {
   try {
-    // return res.json(
-    //   await redisClient.get(business_reviewers_hash, '63930e95aece20c26be873a4')
-    // );
-    // await redisClient.hDel(business_reviewers_hash, '63930e95aece20c26be873a4');
-    const allReviews = await BusinessReview.find();
-    // console.log(allReviews);
+    let reviews = await BusinessReview.find();
+    reviews = reviews.map(r => ({ business: r.business, reviewedBy: r.reviewedBy }));
 
-    allReviews.map(async r => {
-      console.log(r.reviewedBy, r.business);
-      await cacheBusinessReviewerId(r.business.toString(), r.reviewedBy.toString());
-    });
-    // console.log({ 'allReviews[0].business': allReviews[0].business });
-    res.json(await getBusinessReviewerIds('63930e95aece20c26be873a4'));
+    // reviews.map(async r => {
+    //   console.log(r);
+    //   await addBusinessReviewer(r.business.toString(), r.reviewedBy.toString());
+    // });
+    res.json(
+      await redisClient.sMembers(`business_reviewers:business=63930ebbaece20c26be8d2eb`)
+    );
+    // res.json(await getBusinessReviewerIds('63930e95aece20c26be873a4'));
   } catch (err) {
-    console.log(err);
     res.json(err);
   }
 });

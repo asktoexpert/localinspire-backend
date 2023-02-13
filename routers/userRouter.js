@@ -1,14 +1,9 @@
 const express = require('express');
 const userController = require('../controllers/user/userController');
 const authController = require('../controllers/authController');
+
 const multer = require('multer');
-
 const multerStorage = multer.memoryStorage();
-
-// const multerFilter = (req, file, cb) => {
-//   if (file.mimetype.startsWith('image')) cb(null, true);
-//   else cb(new Error('Only images are allowed'), false);
-// };
 const upload = multer({ storage: multerStorage });
 
 const router = express.Router();
@@ -39,5 +34,14 @@ router
   .patch(authController.protect, userController.updateUserLocation);
 
 router.route('/contribute').patch(authController.protect, userController.addUserContribution);
+
+router
+  .route('/collections')
+  .patch(authController.protect, userController.createCollection)
+  .get(authController.protect, userController.getUserCollections);
+
+router
+  .route('/collections/:cId/add')
+  .patch(authController.protect, userController.addOrRemoveItemToCollection);
 
 module.exports = router;

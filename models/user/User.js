@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
-const { contributionSchema } = require('./schemas');
+const { contributionSchema, collectionSchema } = require('./schemas');
 
 const userSchema = mongoose.Schema(
   {
@@ -71,6 +71,7 @@ const userSchema = mongoose.Schema(
       default: false,
     },
 
+    collections: [collectionSchema],
     contributions: [contributionSchema],
   },
   {
@@ -79,6 +80,7 @@ const userSchema = mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
 userSchema.virtual('city').get(function () {
   return this.location.cityName?.concat(', ')?.concat(this.location.stateCode);
 });
@@ -99,8 +101,8 @@ userSchema.statics.encryptPassword = async function (password) {
   return await bcrypt.hash(password, 11);
 };
 
-userSchema.pre('save', async function (next) {
-  if (this.isModified('password')) this.password = await bcrypt.hash(this.password, 11);
+userSchema.pre('save', function (next) {
+  if (this.isModified('password')) this.password = bcrypt.hash(this.password, 11);
   return next();
 });
 

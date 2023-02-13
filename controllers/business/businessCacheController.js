@@ -9,6 +9,7 @@ const stringUtils = require('../../utils/string-utils');
 exports.searchCachedBusinessCategories = async function (req, res, next) {
   // await redisClient.DEL('set_of_all_business_categories');
   // return res.json(await redisClient.sMembers('set_of_all_business_categories'));
+
   let { textQuery } = req.query;
   textQuery = categoryUtils.mapCategoryQueryToExistingCategory(textQuery).toLowerCase();
 
@@ -57,8 +58,9 @@ exports.findCachedBusinesses = async function (req, res, next) {
     +page,
     +limit,
   ];
-  // req.businessSearchParams = { category, cityName, stateCode, page, limit };
-  // return next();
+  req.businessSearchParams = { category, cityName, stateCode, page, limit };
+  return next();
+
   try {
     if (!category || !cityName || !stateCode)
       return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });

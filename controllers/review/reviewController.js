@@ -12,7 +12,7 @@ const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
-const reviewQueries = require('../../databases/redis/queries/review.queries');
+const reviewQueries = require('../../databases/redis/queries/business.queries');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);
@@ -91,34 +91,35 @@ exports.reviewBusiness = async (req, res) => {
   });
 
   await Promise.all([
-    reviewQueries.cacheBusinessReviewerId(
-      newReview.business.toString(),
-      req.user._id.toString()
-    ),
+    reviewQueries.cacheBusinessReviewer(req.params.businessId, req.user._id),
     userController.addUserContribution(req.user._id, newReview._id, 'BusinessReview'),
   ]);
 
-  // Update avg business rating
+  // Update avg business rating and business images
   const reviews = await BusinessReview.find({ business: req.params.businessId });
   const reviewsCount = reviews.length;
   const avgRating = reviews.reduce((acc, rev) => acc + rev.businessRating, 0) / reviewsCount;
+  const images = imagesWithCorrespondingDescription.map(img => ({ imgUrl: img.photoUrl }));
 
-  const business = await Business.findByIdAndUpdate(
+  await Business.findByIdAndUpdate(
     req.params.businessId,
-    { $set: { avgRating } },
+    { $set: { avgRating }, $push: { images } },
     { new: true }
   );
-
-  res.status(201).json({ status: 'SUCCESS', review: newReview, business });
+  res.status(201).json({ status: 'SUCCESS', review: newReview });
 };
 
 exports.addPhotosOfBusiness = async (req, res) => {
   try {
     console.log(req.body.descriptions);
-    const review = await BusinessReview.findOne({
-      business: req.params.businessId,
-      reviewedBy: req.user._id,
-    });
+
+    const [review, business] = await Promise.all([
+      BusinessReview.findOne({
+        business: req.params.businessId,
+        reviewedBy: req.user._id,
+      }),
+      Business.findById(req.params.businessId),
+    ]);
 
     if (!review) {
       return res
@@ -129,11 +130,16 @@ exports.addPhotosOfBusiness = async (req, res) => {
     const descriptions = JSON.parse(req.body.descriptions);
     const imagesWithDescription = req.body.photoUrls.map((url, i) => ({
       photoUrl: url,
+      imgUrl: url,
       description: descriptions[i],
     }));
 
-    if (Array.isArray(imagesWithDescription)) review.images.unshift(...imagesWithDescription);
+    if (Array.isArray(imagesWithDescription)) {
+      review.images.unshift(...imagesWithDescription);
+      business.images.push(...imagesWithDescription);
+    }
     await review.save();
+    await business.save();
 
     res.json({ status: 'SUCCESS', review });
   } catch (err) {

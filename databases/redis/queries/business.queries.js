@@ -68,3 +68,14 @@ exports.getMatchingBusinessesInCache = async params => {
     await redisClient.hGet(businessKeys.businesses_search_result, matchingKey)
   );
 };
+
+exports.getCachedBusinessReviewers = async businessId => {
+  return await redisClient.sMembers(businessKeys.genBusinessReviewersKey(businessId));
+};
+
+exports.cacheBusinessReviewer = async (businessId, userId) => {
+  await redisClient.sAdd(
+    businessKeys.genBusinessReviewersKey(businessId),
+    userId.toString?.()
+  );
+};
