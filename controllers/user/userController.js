@@ -401,25 +401,26 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
   try {
     const collection = req.user.collections.find(c => c._id.toString() === req.params.cId);
 
-    if (!collection) {
+    if (!collection)
       return res.status(404).json({
         status: 'FAIL',
         msg: 'This collection does not exist.',
         summary: 'COLLECTION_NOT_FOUND',
       });
-    }
+
     const itemAlreadyExistsInCollection = collection.items.some(
       ({ item }) => item.toString() === req.body.item
     );
 
     if (!itemAlreadyExistsInCollection) collection.items.unshift(req.body);
-    else
-      collection.items = collection.items.filter(
-        ({ item }) => item.toString() !== req.body.item
-      );
+    else collection.items = collection.items.filter(i => i.item.toString() !== req.body.item);
 
     await req.user.save();
-    res.status(200).json({ status: 'SUCCESS', collections: req.user.collections });
+    res.status(200).json({
+      status: 'SUCCESS',
+      msg: itemAlreadyExistsInCollection ? 'Deleted' : 'Saved',
+      collections: req.user.collections,
+    });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
