@@ -1,1 +1,2 @@
-exports.userPublicFieldsString = 'firstName lastName imgUrl role location contributions';
+exports.userPublicFieldsString =
+  'firstName lastName imgUrl role location contributions followers';

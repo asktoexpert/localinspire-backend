@@ -149,12 +149,10 @@ exports.addPhotosOfBusiness = async (req, res) => {
 };
 
 exports.getBusinessReviews = async (req, res) => {
-  // console.log(req.query);
   console.log('Req url', req.url);
 
   const { page = 1, limit } = req.query;
   const skip = limit * (page - 1);
-
   const filters = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
 
   let sort = '-createdAt ' + (req.query.sort?.split(',').join(' ') || '');
@@ -167,9 +165,8 @@ exports.getBusinessReviews = async (req, res) => {
   console.log(filters);
 
   try {
-    const responses = await Promise.all([
+    const [allCount, reviews] = await Promise.all([
       BusinessReview.find(filters).count(),
-
       BusinessReview.find(filters)
         .sort(sort)
         .skip(skip)
@@ -180,9 +177,6 @@ exports.getBusinessReviews = async (req, res) => {
           { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
         ]),
     ]);
-
-    const [allCount, reviews] = responses;
-
     if (sort.includes('-likes'))
       reviews.sort((prev, next) => next.likes.length - prev.likes.length);
 

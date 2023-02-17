@@ -426,3 +426,36 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
     res.status(400).json({ status: 'FAIL' });
   }
 };
+
+exports.getPeopleFollowedByMe = async (req, res) => {
+  try {
+    res.status(200).json({ status: 'SUCCESS', followed: req.user.followers });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.followUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('followers');
+    const wasFollowingUserBefore = user.followers?.includes(req.user.id.toString());
+
+    console.log({ wasFollowingUserBefore });
+
+    if (wasFollowingUserBefore) {
+      user.followers = user.followers.filter(
+        userId => userId.toString() !== req.user._id.toString()
+      );
+    } else {
+      if (!user.followers) user.followers = [req.user._id];
+      else user.followers.push(req.user._id);
+    }
+    await user.save();
+
+    res.status(200).json({ status: 'SUCCESS', following: !wasFollowingUserBefore, user });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};

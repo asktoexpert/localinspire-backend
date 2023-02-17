@@ -44,4 +44,8 @@ router
   .route('/collections/:cId/add')
   .patch(authController.protect, userController.addOrRemoveItemToCollection);
 
+router.route('/followed').get(authController.protect, userController.getPeopleFollowedByMe);
+
+router.route('/:id/follow').patch(authController.protect, userController.followUser);
+
 module.exports = router;
