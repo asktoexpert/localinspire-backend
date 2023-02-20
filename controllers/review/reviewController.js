@@ -157,10 +157,9 @@ exports.getBusinessReviews = async (req, res) => {
   const skip = limit * (page - 1);
   const filter = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
 
-  let sort = req.query.sort?.includes('-createdAt')
-    ? ''
-    : '-createdAt ' + (req.query.sort?.split(',').join(' ') || '');
-
+  let sort = (req.query.sort?.split(',').join(' ') || '').concat(
+    req.query.sort?.includes('-createdAt') ? '' : '-createdAt'
+  );
   // if (sort?.includes('-likes')) sort = sort.replace('-likes', '-totalLikes');
   console.log('Reviews sort: ', sort);
 
@@ -191,6 +190,15 @@ exports.getBusinessReviews = async (req, res) => {
     if (sort?.includes('-likes')) {
       reviews.sort((prev, next) => next.likes.length - prev.likes.length);
       reviews = await arrayUtils.paginate({ array: reviews, page, limit });
+
+      return res.json({
+        status: 'SUCCESS',
+        results: reviews.length,
+        total: allCount,
+        data: reviews,
+        filter,
+        sort,
+      });
     }
 
     res.status(200).json({
