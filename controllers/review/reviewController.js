@@ -13,6 +13,7 @@ const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
 const reviewQueries = require('../../databases/redis/queries/business.queries');
+const arrayUtils = require('../../utils/arrayUtils');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);
@@ -149,40 +150,57 @@ exports.addPhotosOfBusiness = async (req, res) => {
 };
 
 exports.getBusinessReviews = async (req, res) => {
-  console.log('Req url', req.url);
+  console.log('getBusinessReviews url', req.url);
+  console.log('getBusinessReviews query', req.query);
 
-  const { page = 1, limit } = req.query;
+  const { page = 1, limit = 5 } = req.query;
   const skip = limit * (page - 1);
-  const filters = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
+  const filter = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
 
-  let sort = '-createdAt ' + (req.query.sort?.split(',').join(' ') || '');
+  let sort = req.query.sort?.includes('-createdAt')
+    ? ''
+    : '-createdAt ' + (req.query.sort?.split(',').join(' ') || '');
+
+  // if (sort?.includes('-likes')) sort = sort.replace('-likes', '-totalLikes');
   console.log('Reviews sort: ', sort);
 
   if (req.query.rating)
-    filters.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
+    filter.businessRating = { $in: req.query.rating.split(',').map(n => +n) };
 
-  if (req.query.recommends) filters.recommends = req.query.recommends === '1';
-  console.log(filters);
+  if (req.query.recommends) filter.recommends = req.query.recommends === '1';
+  console.log(filter);
+
+  // return res.json({ filter, sort });
+
+  const queries = [
+    BusinessReview.find(filter).count(),
+    BusinessReview.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate([
+        { path: 'reviewedBy', select: userPublicFieldsString },
+        { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+        { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
+      ]),
+  ];
 
   try {
-    const [allCount, reviews] = await Promise.all([
-      BusinessReview.find(filters).count(),
-      BusinessReview.find(filters)
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .populate([
-          { path: 'reviewedBy', select: userPublicFieldsString },
-          { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
-          { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
-        ]),
-    ]);
-    if (sort.includes('-likes'))
-      reviews.sort((prev, next) => next.likes.length - prev.likes.length);
+    let [allCount, reviews] = await Promise.all(queries);
 
-    res
-      .status(200)
-      .json({ status: 'SUCCESS', results: reviews.length, total: allCount, data: reviews });
+    if (sort?.includes('-likes')) {
+      reviews.sort((prev, next) => next.likes.length - prev.likes.length);
+      reviews = await arrayUtils.paginate({ array: reviews, page, limit });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      results: reviews.length,
+      total: allCount,
+      data: reviews,
+      filter,
+      sort,
+    });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
@@ -210,7 +228,6 @@ exports.getUserReviewOnBusiness = async (req, res) => {
       business: req.params.businessId,
       reviewedBy: req.user._id,
     });
-    console.log('User"s review on business: ', userReview);
     res.status(200).json({ status: 'SUCCESS', review: userReview });
   } catch (err) {
     console.log(err);
@@ -233,3 +250,10 @@ exports.getAllReviewsMadeByUser = async (req, res) => {
     res.json({ error: err });
   }
 };
+
+// req.query.sort
+//   ?.split(',')
+//   .map(field => field.trim())
+//   ?.forEach(field => {
+//     sortObj[field.replace('-', '')] = field.includes('-') ? -1 : 1;
+//   });

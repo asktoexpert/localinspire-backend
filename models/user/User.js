@@ -107,5 +107,9 @@ userSchema.pre('save', function (next) {
   return next();
 });
 
+userSchema.virtual('totalContributions').get(function () {
+  return this.contributions.length;
+});
+
 const User = mongoose.model('User', userSchema);
 module.exports = User;

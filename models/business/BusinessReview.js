@@ -66,5 +66,9 @@ const businessReviewSchema = mongoose.Schema(
   { timestamps: true, toJSON: { virtuals: true } }
 );
 
+businessReviewSchema.virtual('totalLikes').get(function () {
+  return this.likes?.length;
+});
+
 const BusinessReview = mongoose.model('BusinessReview', businessReviewSchema);
 module.exports = BusinessReview;
