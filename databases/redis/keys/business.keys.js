@@ -5,5 +5,6 @@ exports.genBusinessResultsKey = (keyword, cityName, stateCode) => {
   return `results:keyword=${keyword}|city=${cityName}|stateCode=${stateCode}`;
 };
 
-exports.genBusinessReviewersKey = businessId =>
-  `business_reviewers:business=${businessId.toString?.()}`;
+exports.genBusinessReviewersKey = businessId => {
+  return `business_reviewers:business=${businessId.toString?.()}`;
+};

@@ -2,6 +2,7 @@ const { ConnectionTimeoutError } = require('redis');
 const { redisClient } = require('../../databases/redis');
 const { set_of_all_business_categories } = require('../../databases/redis/keys/business.keys');
 const businessQueries = require('../../databases/redis/queries/business.queries');
+const Business = require('../../models/business/Business');
 const arrayUtils = require('../../utils/arrayUtils');
 const categoryUtils = require('../../utils/category-utils');
 const stringUtils = require('../../utils/string-utils');
@@ -93,12 +94,14 @@ exports.findCachedBusinesses = async function (req, res, next) {
       limit,
     });
 
+    const paginatedBusinessIds = paginatedResults.map(b => b._id);
+
     res.status(200).json({
       status: 'SUCCESS',
       source: 'cache',
       results: paginatedResults.length,
       allResults: searchResults.length,
-      businesses: paginatedResults,
+      businesses: await Business.find({ _id: { $in: paginatedBusinessIds } }),
     });
   } catch (err) {
     let status;
