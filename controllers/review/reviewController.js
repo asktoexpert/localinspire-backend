@@ -259,9 +259,25 @@ exports.getAllReviewsMadeByUser = async (req, res) => {
   }
 };
 
-// req.query.sort
-//   ?.split(',')
-//   .map(field => field.trim())
-//   ?.forEach(field => {
-//     sortObj[field.replace('-', '')] = field.includes('-') ? -1 : 1;
-//   });
+exports.getWhatPeopleSayAboutBusinesses = async (req, res) => {
+  try {
+    const businessIds = req.body?.businesses || [];
+    console.log({ businessIds });
+
+    const whatPeopleSay = await BusinessReview.aggregate([
+      { $match: { business: { $in: businessIds.map(id => mongoose.Types.ObjectId(id)) } } },
+      { $project: { review: 1, business: 1, likes: 1 } },
+      {
+        $group: {
+          _id: '$business',
+          whatPeopleSay: { $addToSet: '$review' },
+        },
+      },
+    ]);
+
+    res.json(whatPeopleSay);
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};

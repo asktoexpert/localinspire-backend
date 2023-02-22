@@ -72,6 +72,10 @@ router
 
 router.route('/:id').get(reviewController.getReview);
 
+router
+  .route('/businesses/what-people-say')
+  .post(reviewController.getWhatPeopleSayAboutBusinesses);
+
 // Get reviews made on business
 router.route('/businesses/:id/').get(reviewController.getBusinessReviews);
 

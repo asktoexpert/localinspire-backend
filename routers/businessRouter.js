@@ -55,7 +55,6 @@ router
 // Get tips from past visitors about a business
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 
-// router.route('/:id/reviewers').get(businessController.getTipsAboutBusiness);
 router.route('/:id/overall-rating').get(businessController.getOverallBusinessRatingStats);
 
 // FOR DEV ONLY
