@@ -267,7 +267,7 @@ exports.getWhatPeopleSayAboutBusinesses = async (req, res) => {
     const whatPeopleSay = await BusinessReview.aggregate([
       { $match: { business: { $in: businessIds.map(id => mongoose.Types.ObjectId(id)) } } },
       { $project: { review: 1, business: 1, likes: 1 } },
-      { $group: { whatPeopleSay: { $addToSet: '$review' } } },
+      { $group: { _id: '$business', whatPeopleSay: { $addToSet: '$review' } } },
     ]);
 
     res.json(whatPeopleSay);
