@@ -21,6 +21,8 @@ router
     userController.signupWithCredentials
   );
 
+router.route('/:id/profile').get(userController.getUserPublicProfile);
+
 router.route('/is-email-in-use').get(userController.checkEmailAlreadyInUse);
 
 router.route('/forgot-password').get(userController.forgotPassword);
@@ -43,8 +45,6 @@ router
 router
   .route('/collections/:cId/add')
   .patch(authController.protect, userController.addOrRemoveItemToCollection);
-
-router.route('/followed').get(authController.protect, userController.getPeopleFollowedByMe);
 
 router.route('/:id/follow').patch(authController.protect, userController.followUser);
 

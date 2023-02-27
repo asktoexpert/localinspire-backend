@@ -9,6 +9,7 @@ const cityRouter = require('./routers/cityRouter');
 const questionRouter = require('./routers/questionRouter');
 const reviewRouter = require('./routers/reviewRouter');
 const reportRouter = require('./routers/reportRouter');
+const msgRouter = require('./routers/msgRouter');
 
 const app = express();
 
@@ -31,6 +32,8 @@ app.use('/api/v1/businesses', businessRouter);
 app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/cities', cityRouter);
 app.use('/api/v1/questions', questionRouter);
+app.use('/api/v1/messages', msgRouter);
+
 app.use('/api/v1/report', reportRouter);
 
 // app.all('*', (req, res) => {

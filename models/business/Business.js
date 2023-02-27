@@ -38,6 +38,14 @@ const businessSchema = new mongoose.Schema(
   }
 );
 
+businessSchema.statics.doesBusinessExist = async function (id) {
+  const business = await Business.findById(id).select('businessName');
+  console.log('Found business: ', business);
+
+  if (business) return [true, business.businessName];
+  return false;
+};
+
 const Business = mongoose.model('Business', businessSchema);
 businessSchema.index({ SIC8: 1, stateCode: 1, city: 1 });
 

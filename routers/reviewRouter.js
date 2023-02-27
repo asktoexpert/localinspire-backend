@@ -1,44 +1,16 @@
 const express = require('express');
 const multer = require('multer');
 
-const businessController = require('../controllers/business/businessController');
 const authController = require('../controllers/authController');
 const reviewController = require('../controllers/review/reviewController');
 const BusinessReview = require('../models/business/BusinessReview');
-const Business = require('../models/business/Business');
-const {
-  getBusinessReviewers,
-  addBusinessReviewer,
-} = require('../databases/redis/queries/review.queries');
 const { redisClient } = require('../databases/redis');
-const { business_reviewers_hash } = require('../databases/redis/keys/review.keys');
+const Business = require('../models/business/Business');
 
 const multerStorage = multer.memoryStorage();
 const upload = multer({ storage: multerStorage });
 const router = express.Router();
 
-// router.get('/dev', async (req, res) => {
-//   let reviews = await BusinessReview.aggregate([
-//     { $project: { 'images.photoUrl': 1, business: 1 } },
-//   ]);
-
-//   reviews = reviews.map(r => {
-//     r.images = r.images.map(({ photoUrl }) => photoUrl);
-
-//     return { ...r, business: r.business };
-//   });
-
-//   reviews.map(async r => {
-//     const business = await Business.findById(r.business).select('businessName images');
-//     if (!business.images) business.images = r.images.map(img => ({ imgUrl: img }));
-//     else business.images.push(...r.images.map(img => ({ imgUrl: img })));
-
-//     await business.save();
-//     console.log('Business: ', business);
-//   });
-
-//   res.json(reviews);
-// });
 router.get('/dev', async (req, res) => {
   try {
     let reviews = await BusinessReview.find();
@@ -61,6 +33,7 @@ router
   .route('/on/:businessId/new')
   .post(
     authController.protect,
+    authController.restrictToNonBusinessReviewers,
     upload.array('photos', 7),
     reviewController.resizeReviewPhotos,
     reviewController.reviewBusiness

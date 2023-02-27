@@ -6,8 +6,11 @@ const authQueries = require('../../databases/redis/queries/auth.queries');
 const emailService = require('../../services/emailService');
 const { v4: uuid } = require('uuid');
 const sharp = require('sharp');
-const { default: mongoose } = require('mongoose');
+const { default: mongoose, isValidObjectId } = require('mongoose');
 const cloudinaryService = require('../../services/cloudinaryService');
+const BusinessReview = require('../../models/business/BusinessReview');
+const businessQueries = require('../../databases/redis/queries/business.queries');
+const { userPublicFieldsString } = require('../../utils/populate-utils');
 
 const emailAccountConfirmationLink = async (email, firstName) => {
   // Send verification email
@@ -42,6 +45,12 @@ exports.addUserContribution = async (userId, contributionId, contributionType) =
     console.log('Error in adding contribution: ', err);
     throw err;
   }
+};
+
+exports.getPeopleWhoUserFollows = async (userId, { noPopulate = false, count = false }) => {
+  if (count) return await User.find({ followers: userId }).count();
+  if (noPopulate) return await User.find({ followers: userId }).populate('_id');
+  return await User.find({ followers: userId });
 };
 
 exports.resizeUserPhoto = async (req, res, next) => {
@@ -427,15 +436,6 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
   }
 };
 
-exports.getPeopleFollowedByMe = async (req, res) => {
-  try {
-    res.status(200).json({ status: 'SUCCESS', followed: req.user.followers });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ status: 'FAIL' });
-  }
-};
-
 exports.followUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('followers');
@@ -454,6 +454,40 @@ exports.followUser = async (req, res) => {
     await user.save();
 
     res.status(200).json({ status: 'SUCCESS', following: !wasFollowingUserBefore, user });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.getUserPublicProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user)
+      return res.status(404).json({
+        status: 'NOT_FOUND',
+        msg: 'This user does not exist. He/she might have been deleted from the database',
+      });
+
+    const reviewsMade = await BusinessReview.find({ reviewedBy: req.params.id }).populate([
+      { path: 'business', select: 'businessName stateCode city ' },
+      { path: 'reviewedBy', select: userPublicFieldsString.replace('contributions', '') },
+      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+    ]);
+    const businessesReviewed = reviewsMade.map(r => r.business._id);
+
+    const businessReviewsCount = (
+      await Promise.all(businessesReviewed.map(businessQueries.getCachedBusinessReviewers))
+    ).map((reviewers, i) => ({ [businessesReviewed[i]]: reviewers?.length }));
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      user,
+      businessReviewsCount,
+      reviews: { total: reviewsMade.length, data: reviewsMade },
+      following: await this.getPeopleWhoUserFollows(req.user, { count: true }),
+    });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });

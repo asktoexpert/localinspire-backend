@@ -10,6 +10,8 @@ const User = require('../models/user/User');
 const stringUtils = require('../utils/string-utils');
 const emailService = require('../services/emailService');
 const axios = require('axios');
+const businessQueries = require('../databases/redis/queries/business.queries');
+const Business = require('../models/business/Business');
 
 // const { redisClient } = require('../databases/redis');
 
@@ -41,6 +43,32 @@ exports.protect = async (req, res, next) => {
     // if (err.message === 'jwt malformed') {
     res.status(401).json({ msg: 'AUTH_ERROR' });
     // }
+  }
+};
+
+exports.restrictToNonBusinessReviewers = async (req, res, next) => {
+  try {
+    const [userId, businessId] = [req.user._id, req.params.businessId];
+    const result = await Business.doesBusinessExist(req.params.businessId);
+
+    if (!result)
+      return res.status(404).json({
+        status: 'ERROR',
+        msg: `Business with id ${req.params.businessId} does not exist`,
+      });
+
+    const [, businessName] = result;
+
+    if (await businessQueries.hasUserPreviouslyReviewedBusiness(userId, businessId))
+      return res
+        .status(400)
+        .json({ status: 'FAIL', msg: `You have previously reviewed ${businessName}` });
+
+    console.log('User has not previously reviewed this business');
+    next();
+  } catch (err) {
+    console.log(err);
+    res.status(401).json({ error: err });
   }
 };
 

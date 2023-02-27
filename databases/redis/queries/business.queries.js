@@ -70,12 +70,21 @@ exports.getMatchingBusinessesInCache = async params => {
 };
 
 exports.getCachedBusinessReviewers = async businessId => {
-  return await redisClient.sMembers(businessKeys.genBusinessReviewersKey(businessId));
+  return await redisClient.sMembers(
+    businessKeys.genBusinessReviewersKey(businessId.toString())
+  );
 };
 
 exports.cacheBusinessReviewer = async (businessId, userId) => {
   await redisClient.sAdd(
     businessKeys.genBusinessReviewersKey(businessId),
     userId.toString?.()
+  );
+};
+
+exports.hasUserPreviouslyReviewedBusiness = async (userId, businessId) => {
+  return await redisClient.sIsMember(
+    businessKeys.genBusinessReviewersKey(businessId.toString()),
+    userId.toString()
   );
 };

@@ -74,6 +74,7 @@ const userSchema = mongoose.Schema(
     collections: [collectionSchema],
     contributions: [contributionSchema],
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    profileViews: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true,

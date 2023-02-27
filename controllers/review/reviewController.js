@@ -12,7 +12,7 @@ const BusinessReview = require('../../models/business/BusinessReview');
 const BusinessQuestion = require('../../models/business/BusinessQuestion');
 const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
-const reviewQueries = require('../../databases/redis/queries/business.queries');
+const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
@@ -92,7 +92,7 @@ exports.reviewBusiness = async (req, res) => {
   });
 
   await Promise.all([
-    reviewQueries.cacheBusinessReviewer(req.params.businessId, req.user._id),
+    businessQueries.cacheBusinessReviewer(req.params.businessId, req.user._id),
     userController.addUserContribution(req.user._id, newReview._id, 'BusinessReview'),
   ]);
 
@@ -107,7 +107,13 @@ exports.reviewBusiness = async (req, res) => {
     { $set: { avgRating }, $push: { images } },
     { new: true }
   );
-  res.status(201).json({ status: 'SUCCESS', review: newReview });
+  res.status(201).json({
+    status: 'SUCCESS',
+    review: await BusinessReview.findById(newReview._id).populate(
+      'business',
+      'businessName city stateCode'
+    ),
+  });
 };
 
 exports.addPhotosOfBusiness = async (req, res) => {
@@ -160,7 +166,6 @@ exports.getBusinessReviews = async (req, res) => {
   let sort = (req.query.sort?.split(',').join(' ') || '').concat(
     req.query.sort?.includes('-createdAt') ? '' : '-createdAt'
   );
-  // if (sort?.includes('-likes')) sort = sort.replace('-likes', '-totalLikes');
   console.log('Reviews sort: ', sort);
 
   if (req.query.rating)
