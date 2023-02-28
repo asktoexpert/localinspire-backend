@@ -13,7 +13,15 @@ const msgRouter = require('./routers/msgRouter');
 
 const app = express();
 
-app.use(cors({}));
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : 'https://localinspire.vercel.app',
+    methods: ['GET', 'POST', 'PATCH', 'HEAD'],
+  })
+);
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

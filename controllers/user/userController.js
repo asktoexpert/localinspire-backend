@@ -493,3 +493,18 @@ exports.getUserPublicProfile = async (req, res) => {
     res.status(400).json({ status: 'FAIL' });
   }
 };
+
+exports.updateProfileViews = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { profileViews: 1 } },
+      { new: true }
+    ).select('profileViews');
+
+    res.status(200).json({ status: 'SUCCESS', ...user.toObject() });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};

@@ -74,13 +74,9 @@ const userSchema = mongoose.Schema(
     collections: [collectionSchema],
     contributions: [contributionSchema],
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    profileViews: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    profileViews: { type: Number, default: 0 },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 userSchema.virtual('city').get(function () {
