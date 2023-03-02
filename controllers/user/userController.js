@@ -47,7 +47,7 @@ exports.addUserContribution = async (userId, contributionId, contributionType) =
   }
 };
 
-exports.getPeopleWhoUserFollows = async (userId, { noPopulate = false, count = false }) => {
+exports.getPeopleFollowedByUser = async (userId, { noPopulate = false, count = false }) => {
   if (count) return await User.find({ followers: userId }).count();
   if (noPopulate) return await User.find({ followers: userId }).populate('_id');
   return await User.find({ followers: userId });
@@ -477,16 +477,16 @@ exports.getUserPublicProfile = async (req, res) => {
     ]);
     const businessesReviewed = reviewsMade.map(r => r.business._id);
 
-    const businessReviewsCount = (
+    const businessReviewersCount = (
       await Promise.all(businessesReviewed.map(businessQueries.getCachedBusinessReviewers))
     ).map((reviewers, i) => ({ [businessesReviewed[i]]: reviewers?.length }));
 
     res.status(200).json({
       status: 'SUCCESS',
       user,
-      businessReviewsCount,
+      businessReviewersCount,
       reviews: { total: reviewsMade.length, data: reviewsMade },
-      following: await this.getPeopleWhoUserFollows(req.user, { count: true }),
+      following: await this.getPeopleFollowedByUser(req.params.id, { count: true }),
     });
   } catch (err) {
     console.log(err);

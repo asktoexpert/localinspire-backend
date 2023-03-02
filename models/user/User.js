@@ -8,10 +8,12 @@ const userSchema = mongoose.Schema(
     firstName: {
       type: 'String',
       required: [true, 'Please enter your first name'],
+      trim: true,
     },
 
     lastName: {
       type: 'String',
+      trim: true,
       // required: [true, 'Please enter your last name'],
     },
 
@@ -21,6 +23,7 @@ const userSchema = mongoose.Schema(
       required: [true, 'Please enter an email address'],
       unique: true,
       validate: [validator.isEmail, 'Please enter a valid email'],
+      trim: true,
     },
 
     role: {
@@ -41,6 +44,7 @@ const userSchema = mongoose.Schema(
       required: [false, 'Please provide a password'],
       minlength: 6,
       select: false,
+      trim: true,
     },
 
     imgUrl: { type: String, default: '/img/default-profile-pic.jpeg' },

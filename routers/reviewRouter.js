@@ -39,9 +39,7 @@ router
     reviewController.reviewBusiness
   );
 
-router
-  .route('/made-by-user')
-  .get(authController.protect, reviewController.getAllReviewsMadeByUser);
+router.route('/made-by/:userId').get(reviewController.getAllReviewsMadeByUser);
 
 router.route('/:id').get(reviewController.getReview);
 

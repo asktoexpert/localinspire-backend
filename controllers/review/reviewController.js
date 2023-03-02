@@ -249,15 +249,33 @@ exports.getUserReviewOnBusiness = async (req, res) => {
 };
 
 exports.getAllReviewsMadeByUser = async (req, res) => {
+  console.log({ 'Req url': req.url, 'Req query': req.query });
   try {
-    const userReviews = await BusinessReview.find({ reviewedBy: req.user._id });
-    // .populate({
-    //   path: 'business',
-    //   select: 'avgRating',
-    // });
-    res
-      .status(200)
-      .json({ status: 'SUCCESS', results: userReviews.length, reviews: userReviews });
+    const { page = 1, limit } = req.query;
+    const skip = limit * (page - 1);
+
+    const populateConfig = [
+      { path: 'business', select: 'businessName stateCode city ' },
+      { path: 'reviewedBy', select: userPublicFieldsString.replace('contributions', '') },
+      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+    ];
+
+    const [reviews, reviewsCount] = await Promise.all([
+      BusinessReview.find({ reviewedBy: req.params.userId })
+        .sort('-createdAt')
+        .skip(skip)
+        .limit(limit)
+        .populate(req.query.populate === 'false' ? [] : populateConfig),
+
+      BusinessReview.find({ reviewedBy: req.params.userId }).count(),
+    ]);
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      results: reviews.length,
+      total: reviewsCount,
+      data: reviews,
+    });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

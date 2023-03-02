@@ -47,6 +47,7 @@ const businessReviewSchema = mongoose.Schema(
       {
         photoUrl: String,
         description: { type: String, minlength: 1, maxlength: 70, required: true },
+        uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       },
     ],
     comments: [
