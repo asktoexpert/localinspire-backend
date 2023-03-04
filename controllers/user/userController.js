@@ -11,6 +11,9 @@ const cloudinaryService = require('../../services/cloudinaryService');
 const BusinessReview = require('../../models/business/BusinessReview');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const { userPublicFieldsString } = require('../../utils/populate-utils');
+const userQueries = require('../../databases/redis/queries/user.queries');
+const { redisClient } = require('../../databases/redis');
+const { usersVotesHashKey } = require('../../databases/redis/keys/user.keys');
 
 const emailAccountConfirmationLink = async (email, firstName) => {
   // Send verification email
@@ -421,8 +424,9 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
       ({ item }) => item.toString() === req.body.item
     );
 
-    if (!itemAlreadyExistsInCollection) collection.items.unshift(req.body);
-    else collection.items = collection.items.filter(i => i.item.toString() !== req.body.item);
+    if (itemAlreadyExistsInCollection)
+      collection.items = collection.items.filter(i => i.item.toString() !== req.body.item);
+    else collection.items.unshift(req.body);
 
     await req.user.save();
     res.status(200).json({
@@ -470,10 +474,13 @@ exports.getUserPublicProfile = async (req, res) => {
         msg: 'This user does not exist. He/she might have been deleted from the database',
       });
 
-    const reviewsMade = await BusinessReview.find({ reviewedBy: req.params.id }).populate([
-      { path: 'business', select: 'businessName stateCode city ' },
-      { path: 'reviewedBy', select: userPublicFieldsString.replace('contributions', '') },
-      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+    const [reviewsMade, helpfulVotes] = await Promise.all([
+      BusinessReview.find({ reviewedBy: req.params.id }).populate([
+        { path: 'business', select: 'businessName stateCode city ' },
+        { path: 'reviewedBy', select: userPublicFieldsString.replace('contributions', '') },
+        { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
+      ]),
+      userQueries.getUserTotalHelpfulVotes(req.params.id),
     ]);
     const businessesReviewed = reviewsMade.map(r => r.business._id);
 
@@ -487,6 +494,7 @@ exports.getUserPublicProfile = async (req, res) => {
       businessReviewersCount,
       reviews: { total: reviewsMade.length, data: reviewsMade },
       following: await this.getPeopleFollowedByUser(req.params.id, { count: true }),
+      helpfulVotes,
     });
   } catch (err) {
     console.log(err);
@@ -503,6 +511,41 @@ exports.updateProfileViews = async (req, res) => {
     ).select('profileViews');
 
     res.status(200).json({ status: 'SUCCESS', ...user.toObject() });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.getPeopleBlockedByUser = async (req, res) => {
+  try {
+    res.status(200).json({ status: 'SUCCESS', users: await req.user.blockedUsers });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
+exports.toggeleBlockUser = async (req, res) => {
+  try {
+    if (!req.user.blockedUsers) req.user.blockedUsers = [];
+    const blockedBefore = req.user.blockedUsers.some(uid => uid.toString() === req.params.id);
+
+    if (blockedBefore) {
+      // Unblock
+      req.user.blockedUsers = req.user.blockedUsers.filter(
+        uid => uid.toString() !== req.params.id
+      );
+    } else req.user.blockedUsers.push(req.params.id);
+
+    await req.user.save();
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      msg: `${!blockedBefore ? 'Blocked' : 'Unblocked'} user successfully`,
+      blocked: !blockedBefore,
+      blockedUsers: req.user.blockedUsers,
+    });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });

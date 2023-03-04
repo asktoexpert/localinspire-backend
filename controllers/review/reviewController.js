@@ -14,6 +14,7 @@ const BusinessAnswer = require('../../models/business/BusinessAnswer');
 const User = require('../../models/user/User');
 const businessQueries = require('../../databases/redis/queries/business.queries');
 const arrayUtils = require('../../utils/arrayUtils');
+const reviewQueries = require('../../databases/redis/queries/user.queries');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);
@@ -214,6 +215,41 @@ exports.getBusinessReviews = async (req, res) => {
       filter,
       sort,
     });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.toggleReviewHelpful = async (req, res) => {
+  try {
+    // Find the review
+    const review = await BusinessReview.findById(req.params.reviewId).populate({
+      path: 'likes',
+      populate: { path: 'user', select: userPublicFieldsString },
+    });
+
+    // If user has liked the review before..
+    const indexOfUser = review.likes.findIndex(
+      ({ user: liker }) => liker._id.toString() === req.user._id.toString()
+    );
+    const userLikedBefore = indexOfUser !== -1;
+
+    // Remove user from the list of likers
+    if (userLikedBefore) review.likes.splice(indexOfUser, 1);
+    else review.likes.push({ user: req.user._id }); // Add him to the list of likers
+
+    await Promise.all([
+      review.save(),
+      reviewQueries.updateUserTotalHelpfulVotes(req.user._id, userLikedBefore ? '-' : '+'),
+    ]);
+
+    const updatedReview = await BusinessReview.findById(req.params.reviewId).populate({
+      path: 'likes',
+      populate: { path: 'user', select: userPublicFieldsString },
+    });
+
+    res.status(200).json({ status: 'SUCCESS', likes: updatedReview.likes });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

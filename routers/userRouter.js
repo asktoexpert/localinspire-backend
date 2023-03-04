@@ -48,5 +48,7 @@ router
   .patch(authController.protect, userController.addOrRemoveItemToCollection);
 
 router.route('/:id/follow').patch(authController.protect, userController.followUser);
+router.route('/:id/block').patch(authController.protect, userController.toggeleBlockUser);
+router.route('/blocked').get(authController.protect, userController.getPeopleBlockedByUser);
 
 module.exports = router;

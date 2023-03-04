@@ -48,10 +48,6 @@ router
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);
 
-router
-  .route('/reviews/:reviewId/like')
-  .post(authController.protect, businessController.toggleBusinessReviewHelpful);
-
 // Get tips from past visitors about a business
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 

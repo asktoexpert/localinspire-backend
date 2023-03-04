@@ -2,14 +2,20 @@ const mongoose = require('mongoose');
 
 const reportSchema = mongoose.Schema(
   {
-    reportedObject: { type: mongoose.Schema.Types.ObjectId, refPath: 'model', required: true },
+    reported: { type: mongoose.Schema.Types.ObjectId, refPath: 'model', required: true },
     model: {
       type: String,
-      enum: ['BusinessReview', 'BusinessQuestion', 'BusinessAnswer', 'BusinessTip'],
+      enum: [
+        'BusinessReview',
+        'BusinessQuestion',
+        'BusinessAnswer',
+        'BusinessTip',
+        'UserProfile',
+      ],
       required: true,
     },
     reason: { type: String, required: true },
-    moreExplanation: { type: [String], required: true },
+    moreExplanation: { type: [String], required: false },
     reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
 

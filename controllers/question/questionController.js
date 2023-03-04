@@ -11,6 +11,7 @@ const userController = require('../user/userController');
 const {
   getCachedBusinessReviewers,
 } = require('../../databases/redis/queries/business.queries');
+const { updateUserTotalHelpfulVotes } = require('../../databases/redis/queries/user.queries');
 
 const getMostHelpfulAnswerToQuestion = async (q_id, { returnDoc = false }) => {
   try {
@@ -213,12 +214,11 @@ exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
       { path: 'askedBy', select: userPublicFieldsString },
       'answers',
     ]);
-    console.log('Question found: ', question);
     const answer = question.answers.find(a => a._id.toString() === req.params.answerId);
-    console.log('Answer found: ', answer);
+    const isDislikeRequest = answer.likes.includes(req.user._id);
 
     // If user has liked before
-    if (answer.likes.includes(req.user._id)) {
+    if (isDislikeRequest) {
       answer.likes = answer.likes.filter(id => id.toString() !== req.user._id.toString());
     } else {
       answer.likes.push(req.user._id); // Add him to the array of likers
@@ -226,16 +226,13 @@ exports.toggleLikeAnswerToBusinessQuestion = async (req, res) => {
         id => id.toString() !== req.user._id.toString()
       );
     }
-
-    await answer.save();
+    const [mostHelpfulAnswerId] = await Promise.all([
+      getMostHelpfulAnswerToQuestion(req.params.questionId, {}),
+      updateUserTotalHelpfulVotes(req.user._id, isDislikeRequest ? '-' : '+'),
+      answer.save(),
+    ]);
     const { likes, dislikes } = answer;
-
-    res.json({
-      status: 'SUCCESS',
-      likes,
-      dislikes,
-      mostHelpfulAnswerId: await getMostHelpfulAnswerToQuestion(req.params.questionId, {}),
-    });
+    res.json({ status: 'SUCCESS', likes, dislikes, mostHelpfulAnswerId });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

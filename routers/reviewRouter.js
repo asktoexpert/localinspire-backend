@@ -39,6 +39,10 @@ router
     reviewController.reviewBusiness
   );
 
+router
+  .route('/:reviewId/like')
+  .patch(authController.protect, reviewController.toggleReviewHelpful);
+
 router.route('/made-by/:userId').get(reviewController.getAllReviewsMadeByUser);
 
 router.route('/:id').get(reviewController.getReview);

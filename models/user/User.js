@@ -79,6 +79,7 @@ const userSchema = mongoose.Schema(
     contributions: [contributionSchema],
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     profileViews: { type: Number, default: 0 },
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );

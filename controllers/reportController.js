@@ -2,6 +2,7 @@ const BusinessAnswer = require('../models/business/BusinessAnswer');
 const BusinessQuestion = require('../models/business/BusinessQuestion');
 const BusinessReview = require('../models/business/BusinessReview');
 const Report = require('../models/Report');
+const User = require('../models/user/User');
 
 exports.report = async (req, res) => {
   try {
@@ -10,14 +11,17 @@ exports.report = async (req, res) => {
       BusinessQuestion,
       BusinessAnswer,
       BusinessTip: BusinessReview,
+      UserProfile: User,
     };
 
-    const reportedObject = await reportableModels[req.body.model]?.findById?.(
-      req.body.reportedObject
-    );
-    console.log('Reported object: ', reportedObject);
+    // Note that 'UserProfile' is not a model !
 
-    if (!reportedObject) {
+    const reportedDocument = await reportableModels[req.body.model]?.findById?.(
+      req.body.reportedId
+    );
+    console.log('Reported object: ', reportedDocument);
+
+    if (!reportedDocument) {
       return res.status(404).json({
         status: 'FAIL',
         summary: 'NOT_FOUND',
