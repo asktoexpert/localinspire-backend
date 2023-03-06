@@ -271,6 +271,37 @@ exports.getReview = async (req, res, next) => {
   }
 };
 
+exports.getReviewLikes = async (req, res) => {
+  try {
+    const review = await BusinessReview.findById(req.params.id)
+      .select('reviewedBy likes')
+      .populate([
+        {
+          path: 'likes',
+          populate: {
+            path: 'user',
+            select: 'firstName lastName followers contributions imgUrl',
+          },
+        },
+        { path: 'reviewedBy', select: 'firstName lastName' },
+      ]);
+
+    if (!review) return res.status(404).json({ status: 'NOT_FOUND' });
+
+    // review.likes = review.toObject();
+    res.json({
+      status: 'SUCCESS',
+      ...{
+        ...review.toObject(),
+        likes: review.toObject().likes.map(({ user }) => ({ ...user })),
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({ status: 'ERROR', msg: err.message });
+  }
+};
+
 exports.getUserReviewOnBusiness = async (req, res) => {
   try {
     const userReview = await BusinessReview.findOne({

@@ -46,6 +46,7 @@ router
 router.route('/made-by/:userId').get(reviewController.getAllReviewsMadeByUser);
 
 router.route('/:id').get(reviewController.getReview);
+router.get('/:id/likes', reviewController.getReviewLikes);
 
 router
   .route('/businesses/what-people-say')
