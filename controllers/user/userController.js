@@ -464,6 +464,18 @@ exports.followUser = async (req, res) => {
   }
 };
 
+exports.getUserFollowers = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('followers');
+    if (!user) return res.status(404).json({ status: 'NOT_FOUND', msg: 'User not found' });
+
+    res.status(200).json({ status: 'SUCCESS', followers: user.followers });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL' });
+  }
+};
+
 exports.getUserPublicProfile = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
