@@ -50,6 +50,6 @@ router
 router.route('/:id/follow').patch(authController.protect, userController.followUser);
 router.route('/:id/followers').get(userController.getUserFollowers);
 router.route('/:id/block').patch(authController.protect, userController.toggeleBlockUser);
-router.route('/blocked').get(authController.protect, userController.getPeopleBlockedByUser);
+router.route('/blocked-by/:userId').get(userController.getPeopleBlockedByUser);
 
 module.exports = router;

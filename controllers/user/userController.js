@@ -530,8 +530,9 @@ exports.updateProfileViews = async (req, res) => {
 };
 
 exports.getPeopleBlockedByUser = async (req, res) => {
+  const user = await User.findById(req.params.userId);
   try {
-    res.status(200).json({ status: 'SUCCESS', users: await req.user.blockedUsers });
+    res.status(200).json({ status: 'SUCCESS', blockedUsers: user.blockedUsers });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
