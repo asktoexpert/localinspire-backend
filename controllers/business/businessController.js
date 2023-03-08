@@ -172,14 +172,14 @@ exports.getOverallBusinessRatingStats = async (req, res) => {
     ]);
 
     const recommendationStats = {
-      recommends: recommendsStats?.[0]?.count,
-      doesNotRecommend: recommendsStats?.[1]?.count,
+      yes: recommendsStats?.[0]?.count,
+      no: recommendsStats?.[1]?.count,
     };
 
     res.status(200).json({
       status: 'SUCCESS',
       overallFeatureRatings,
-      recommendsStats: recommendationStats,
+      recommendationStats,
     });
   } catch (err) {
     console.log(err);
