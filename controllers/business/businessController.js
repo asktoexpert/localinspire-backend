@@ -51,6 +51,27 @@ exports.searchBusinessCategories = async function (req, res, next) {
   }
 };
 
+exports.getAllCategories = async (req, res) => {
+  let categoryType = req.query.type; // Could be sic2 | sic4
+  if (categoryType.toLowerCase().startsWith('sic')) categoryType = categoryType.toUpperCase();
+  else categoryType = categoryType.toLowerCase();
+
+  if (!['SIC2', 'SIC4', 'SIC8', 'industry'].includes(categoryType))
+    return res.status(400).json({
+      status: 'FAIL',
+      msg: 'Please specify what type of category you want to fetch',
+    });
+
+  const query = Business.find().select(categoryType).distinct(categoryType);
+  let categories = [];
+  (await query).forEach(categ => {
+    if (categ && typeof categ === 'string' && categ != '0') categories.push(categ.trim());
+  });
+
+  categories.sort();
+  res.status(200).json({ status: 'SUCCESS', categories });
+};
+
 // Search businesses
 exports.findBusinesses = async function (req, res, next) {
   const { category, cityName, stateCode, page, limit } = req.businessSearchParams;
@@ -176,11 +197,7 @@ exports.getOverallBusinessRatingStats = async (req, res) => {
       no: recommendsStats?.[1]?.count,
     };
 
-    res.status(200).json({
-      status: 'SUCCESS',
-      overallFeatureRatings,
-      recommendationStats,
-    });
+    res.status(200).json({ status: 'SUCCESS', overallFeatureRatings, recommendationStats });
   } catch (err) {
     console.log(err);
     res.json({ error: err });

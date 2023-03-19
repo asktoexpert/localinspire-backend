@@ -38,12 +38,13 @@ router
   .get(businessCacheController.findCachedBusinesses, businessController.findBusinesses);
 
 // Business categories text search
-router
-  .route('/categories/search')
-  .get(
-    businessCacheController.searchCachedBusinessCategories,
-    businessController.searchBusinessCategories
-  );
+router.route('/categories/search').get(
+  (req, res, next) => {
+    return req.query.type ? businessController.getAllCategories(req, res, next) : next();
+  },
+  businessCacheController.searchCachedBusinessCategories,
+  businessController.searchBusinessCategories
+);
 
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);
@@ -52,25 +53,5 @@ router.route('/:id').get(businessController.getBusinessById);
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
 
 router.route('/:id/overall-rating').get(businessController.getOverallBusinessRatingStats);
-
-// FOR DEV ONLY
-router.route('/reviews/dev/:id').get(async (req, res) => {
-  const reviews = await BusinessReview.find({ business: req.params.id });
-  const reviewsCount = reviews.length;
-
-  const sumRatings = reviews.reduce((acc, rev) => acc + rev.businessRating, 0);
-  const avgRating = sumRatings / reviewsCount;
-
-  const business = await Business.findByIdAndUpdate(
-    req.params.id,
-    { $set: { avgRating } },
-    { new: true }
-  );
-
-  res.json({ business });
-  // const business = await Business.findByIdAndUpdate(req.params.id, { avgRating: })
-});
-
-// ################# DEV ######################
 
 module.exports = router;

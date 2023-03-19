@@ -46,6 +46,18 @@ exports.protect = async (req, res, next) => {
   }
 };
 
+exports.restrictToRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role))
+      return res.status(401).json({
+        status: 'ERROR',
+        reason: 'UNAUTHORIZED',
+        msg: 'You are not authorized to perform this operation',
+      });
+    next();
+  };
+};
+
 exports.restrictToNonBusinessReviewers = async (req, res, next) => {
   try {
     const [userId, businessId] = [req.user._id, req.params.businessId];
