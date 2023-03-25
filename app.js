@@ -14,15 +14,14 @@ const adminRouter = require('./routers/adminRouter');
 
 const app = express();
 
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3000'
-        : 'https://localinspire.vercel.app',
-    methods: ['GET', 'POST', 'PATCH', 'HEAD'],
-  })
-);
+const clientUrl =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : 'https://localinspire.vercel.app';
+
+const corsConfig = { origin: clientUrl, methods: ['GET', 'POST', 'PATCH', 'HEAD', 'DELETE'] };
+
+app.use(cors(corsConfig));
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

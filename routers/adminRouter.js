@@ -17,4 +17,40 @@ router
     adminController.getFilters
   );
 
+router
+  .route('/filters/:id')
+  .delete(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.deleteFilter
+  );
+
+////// KEYWORDS ///////
+
+router
+  .route('/keywords')
+  .post(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.addKeyword
+  )
+  .get(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.getKeywords
+  );
+
+router
+  .route('/keywords/:id')
+  .patch(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.editKeyword
+  )
+  .delete(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.deleteKeyword
+  );
+
 module.exports = router;

@@ -40,7 +40,7 @@ router
 // Business categories text search
 router.route('/categories/search').get(
   (req, res, next) => {
-    return req.query.type ? businessController.getAllCategories(req, res, next) : next();
+    return 'type' in req.query ? businessController.getAllCategories(req, res, next) : next();
   },
   businessCacheController.searchCachedBusinessCategories,
   businessController.searchBusinessCategories
