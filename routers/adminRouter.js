@@ -34,11 +34,7 @@ router
     authController.restrictToRoles('MAIN_ADMIN'),
     adminController.addKeyword
   )
-  .get(
-    authController.protect,
-    authController.restrictToRoles('MAIN_ADMIN'),
-    adminController.getKeywords
-  );
+  .get(adminController.getKeywords);
 
 router
   .route('/keywords/:id')
