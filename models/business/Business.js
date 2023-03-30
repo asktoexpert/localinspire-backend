@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const businessSchema = new mongoose.Schema(
   {
     businessName: { type: String, required: true },
-    SIC2: { type: String, required: true },
-    SIC4: { type: String, required: true },
+    SIC2: { type: String, required: true, index: 'asc' },
+    SIC4: { type: String, required: true, index: 'asc' },
     SIC8: { type: String },
     contactName: { type: String, required: true },
     stateCode: { type: String, required: true },
@@ -47,6 +47,6 @@ businessSchema.statics.doesBusinessExist = async function (id) {
 };
 
 const Business = mongoose.model('Business', businessSchema);
-businessSchema.index({ SIC8: 1, stateCode: 1, city: 1 });
+businessSchema.index({ SIC2: 1, SIC4: 1, SIC8: 1, stateCode: 1, city: 1 });
 
 module.exports = Business;

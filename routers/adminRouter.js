@@ -19,6 +19,11 @@ router
 
 router
   .route('/filters/:id')
+  .patch(
+    authController.protect,
+    authController.restrictToRoles('MAIN_ADMIN'),
+    adminController.editFilter
+  )
   .delete(
     authController.protect,
     authController.restrictToRoles('MAIN_ADMIN'),

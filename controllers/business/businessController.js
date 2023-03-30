@@ -51,25 +51,41 @@ exports.searchBusinessCategories = async function (req, res, next) {
   }
 };
 
-exports.getAllCategories = async (req, res) => {
-  let categoryType = req.query.type; // Could be sic2 | sic4
-  if (categoryType.toLowerCase().startsWith('sic')) categoryType = categoryType.toUpperCase();
-  else categoryType = categoryType.toLowerCase();
+exports.getCategories = async (req, res) => {
+  let categoryType = req.params.type.toUpperCase(); // Could be sic2 | sic4
 
-  if (!['SIC2', 'SIC4', 'SIC8', 'industry'].includes(categoryType))
+  if (!['SIC2', 'SIC4', 'SIC8'].includes(categoryType))
     return res.status(400).json({
       status: 'FAIL',
       msg: 'Please specify what type of category you want to fetch',
     });
 
-  const query = Business.find().select(categoryType).distinct(categoryType);
-  let categories = [];
-  (await query).forEach(categ => {
-    if (categ && typeof categ === 'string' && categ != '0') categories.push(categ.trim());
-  });
+  // - This uppercases the SIC keys of the req.query object - like { sic2: '...' } to { SIC2: '...' }
+  // - It also removes non-SIC keys
+  for (let k in req.query) {
+    if (!k.toLowerCase().startsWith('sic')) {
+      delete req.query[k];
+      continue;
+    }
+    req.query[k.toUpperCase()] = { $regex: `^${req.query[k]}` };
+    delete req.query[k];
+  }
 
-  categories.sort();
-  res.status(200).json({ status: 'SUCCESS', categories });
+  const qFilter = req.query;
+  let categories = [];
+  console.log(qFilter, categoryType);
+
+  try {
+    const q = Business.find(req.query).select(categoryType).distinct(categoryType);
+    (await q).forEach(categ => {
+      if (categ && typeof categ === 'string' && categ != '0') categories.push(categ.trim());
+    });
+    categories.sort();
+    res.status(200).json({ status: 'SUCCESS', categories });
+  } catch (err) {
+    console.log('Error log: ', err);
+    res.json({ error: err.message });
+  }
 };
 
 // Search businesses

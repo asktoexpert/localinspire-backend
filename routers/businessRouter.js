@@ -28,9 +28,6 @@ const multer = require('multer');
 // const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
 
 const multerStorage = multer.memoryStorage();
-const upload = multer({ storage: multerStorage });
-// const upload = multer({ dest: 'public/img/businesses' });
-
 const router = express.Router();
 
 router
@@ -39,12 +36,14 @@ router
 
 // Business categories text search
 router.route('/categories/search').get(
-  (req, res, next) => {
-    return 'type' in req.query ? businessController.getAllCategories(req, res, next) : next();
-  },
+  // (req, res, next) => {
+  //   return 'type' in req.query ? businessController.getCategories(req, res, next) : next();
+  // },
   businessCacheController.searchCachedBusinessCategories,
   businessController.searchBusinessCategories
 );
+
+router.route('/categories/:type').get(businessController.getCategories);
 
 // Get business by id
 router.route('/:id').get(businessController.getBusinessById);

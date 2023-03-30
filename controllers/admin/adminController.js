@@ -32,7 +32,21 @@ exports.deleteFilter = async (req, res) => {
   }
 };
 
-exports.editFilter = async (req, res) => {};
+exports.editFilter = async (req, res) => {
+  try {
+    console.log('Update obj: ', req.body);
+    const updatedFilter = await Filter.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    res
+      .status(200)
+      .json({ status: 'SUCCESS', msg: 'Keyword updated successfully', updatedFilter });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ status: 'FAIL', msg: err.message });
+  }
+};
 
 exports.addKeyword = async (req, res) => {
   try {

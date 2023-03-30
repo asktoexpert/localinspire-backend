@@ -12,7 +12,7 @@ const filterSchema = mongoose.Schema(
     category: String,
     searchKeyword: {
       type: String,
-      enum: ['Restaurants', 'Hotels', 'Things to do', 'Vacation rentals', 'Cruises'],
+      // enum: ['Restaurants', 'Hotels', 'Things to do', 'Vacation rentals', 'Cruises'],
     },
     SIC2Categories: [String],
     SIC4Categories: [String],
