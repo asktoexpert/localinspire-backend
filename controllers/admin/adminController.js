@@ -1,5 +1,6 @@
 const Filter = require('../../models/admin/Filter');
 const Keyword = require('../../models/admin/Keyword');
+const { toTitleCase } = require('../../utils/string-utils');
 
 exports.addNewFilter = async (req, res) => {
   try {
@@ -13,8 +14,14 @@ exports.addNewFilter = async (req, res) => {
 };
 
 exports.getFilters = async (req, res) => {
+  let q = {};
+
+  if (req.query.keyword)
+    // Find filters whose searchKeywords field (of type string[]) contains req.query.keyword
+    q = { searchKeywords: { $regex: req.query.keyword, $options: 'i' } };
+
   try {
-    const filters = await Filter.find({ $regex: `^${req.query.keyword}`, $options: 'i' });
+    const filters = await Filter.find(q);
     res.status(200).json({ status: 'SUCCESS', results: filters.length, filters });
   } catch (err) {
     console.log(err);
