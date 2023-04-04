@@ -12,9 +12,9 @@ exports.addNewFilter = async (req, res) => {
   }
 };
 
-exports.getFilters = async (_, res) => {
+exports.getFilters = async (req, res) => {
   try {
-    const filters = await Filter.find();
+    const filters = await Filter.find({ $regex: `^${req.query.keyword}`, $options: 'i' });
     res.status(200).json({ status: 'SUCCESS', results: filters.length, filters });
   } catch (err) {
     console.log(err);

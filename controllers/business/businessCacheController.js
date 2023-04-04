@@ -100,7 +100,7 @@ exports.findCachedBusinesses = async function (req, res, next) {
       status: 'SUCCESS',
       source: 'cache',
       results: paginatedResults.length,
-      allResults: searchResults.length,
+      total: searchResults.length,
       businesses: await Business.find({ _id: { $in: paginatedBusinessIds } }),
     });
   } catch (err) {

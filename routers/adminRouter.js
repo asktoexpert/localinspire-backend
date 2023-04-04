@@ -11,11 +11,7 @@ router
     authController.restrictToRoles('MAIN_ADMIN'),
     adminController.addNewFilter
   )
-  .get(
-    authController.protect,
-    authController.restrictToRoles('MAIN_ADMIN'),
-    adminController.getFilters
-  );
+  .get(adminController.getFilters);
 
 router
   .route('/filters/:id')

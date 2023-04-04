@@ -4,8 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const Business = require('../../models/business/Business');
 const BusinessReview = require('../../models/business/BusinessReview');
-const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/BusinessAnswer');
+const Filter = require('../../models/admin/Filter');
 
 const stringUtils = require('../../utils/string-utils');
 const businessQueries = require('../../databases/redis/queries/business.queries');
@@ -91,7 +90,6 @@ exports.getCategories = async (req, res) => {
 // Search businesses
 exports.findBusinesses = async function (req, res, next) {
   const { category, cityName, stateCode, page, limit } = req.businessSearchParams;
-
   if (!category || !cityName || !stateCode)
     return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });
 
@@ -119,9 +117,49 @@ exports.findBusinesses = async function (req, res, next) {
       status: 'SUCCESS',
       source: 'db',
       results: pagedBusinesses.length,
-      allResults: businesses.length,
+      total: businesses.length,
       businesses: pagedBusinesses,
     });
+  } catch (err) {
+    console.log('Error log: ', err);
+    res.json({ error: err.message });
+  }
+};
+
+exports.filterBusinesses = async (req, res) => {
+  try {
+    let { filterIds, city, stateCode, page = 1, limit = 20 } = req.query;
+
+    filterIds = req.query.filters
+      ?.split(',')
+      .map(id => id.trim())
+      .filter(id => !!id);
+
+    if (!filterIds)
+      return res.json({ status: 'ERROR', msg: 'Filters not specified correctly' });
+
+    const filters = await Filter.find({ _id: { $in: filterIds } }).select(
+      'SIC2Categories SIC4Categories SIC8Categories'
+    );
+
+    const sic2Filters = new Set(filters.map(f => f.SIC2Categories).flat());
+    const sic4Filters = new Set(filters.map(f => f.SIC4Categories).flat());
+    const sic8Filters = new Set(filters.map(f => f.SIC8Categories).flat());
+    const skip = limit * (page - 1);
+
+    const q = {
+      SIC2: { $in: [...sic2Filters] },
+      SIC4: { $in: [...sic4Filters] },
+      SIC8: [...sic8Filters], // This also works same way as using the $in operator
+      city: stringUtils.toTitleCase(city),
+      stateCode: stateCode?.toUpperCase() || '',
+    };
+    const [businesses, count] = await Promise.all([
+      Business.find(q).skip(skip).limit(limit),
+      Business.find(q).count(),
+    ]);
+
+    res.json({ status: 'SUCCESS', results: businesses.length, total: count, businesses });
   } catch (err) {
     console.log('Error log: ', err);
     res.json({ error: err.message });

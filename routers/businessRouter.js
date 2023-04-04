@@ -34,23 +34,18 @@ router
   .route('/find')
   .get(businessCacheController.findCachedBusinesses, businessController.findBusinesses);
 
+router.route('/filter').get(businessController.filterBusinesses);
+
 // Business categories text search
-router.route('/categories/search').get(
-  // (req, res, next) => {
-  //   return 'type' in req.query ? businessController.getCategories(req, res, next) : next();
-  // },
-  businessCacheController.searchCachedBusinessCategories,
-  businessController.searchBusinessCategories
-);
-
+router
+  .route('/categories/search')
+  .get(
+    businessCacheController.searchCachedBusinessCategories,
+    businessController.searchBusinessCategories
+  );
 router.route('/categories/:type').get(businessController.getCategories);
-
-// Get business by id
-router.route('/:id').get(businessController.getBusinessById);
-
-// Get tips from past visitors about a business
-router.route('/:id/tips').get(businessController.getTipsAboutBusiness);
-
+router.route('/:id').get(businessController.getBusinessById); // Get business by id
+router.route('/:id/tips').get(businessController.getTipsAboutBusiness); // Get tips from past visitors about a business
 router.route('/:id/overall-rating').get(businessController.getOverallBusinessRatingStats);
 
 module.exports = router;
