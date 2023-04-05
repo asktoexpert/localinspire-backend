@@ -5,7 +5,7 @@ const businessSchema = new mongoose.Schema(
     businessName: { type: String, required: true },
     SIC2: { type: String, required: true, index: 'asc' },
     SIC4: { type: String, required: true, index: 'asc' },
-    SIC8: { type: String },
+    SIC8: { type: String, index: 'desc' },
     contactName: { type: String, required: true },
     stateCode: { type: String, required: true },
     city: { type: String, required: true },

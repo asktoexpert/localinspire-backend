@@ -100,7 +100,6 @@ exports.findBusinesses = async function (req, res, next) {
       city: { $regex: `^${cityName}`, $options: 'i' },
       stateCode: stateCode.toUpperCase(),
     });
-    // .select({ avgRating: 1 });
 
     const pagedBusinesses = await arrayUtils.paginate({ array: businesses, page, limit });
 

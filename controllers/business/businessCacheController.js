@@ -14,8 +14,8 @@ exports.searchCachedBusinessCategories = async function (req, res, next) {
   let { textQuery } = req.query;
   textQuery = categoryUtils.mapCategoryQueryToExistingCategory(textQuery).toLowerCase();
 
-  // req.searchCategParams = { textQuery };
-  // return next();
+  req.searchCategParams = { textQuery };
+  return next();
 
   try {
     const cachedCategories = await businessQueries.getCachedBusinessCategories();
