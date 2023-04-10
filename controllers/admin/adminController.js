@@ -17,8 +17,8 @@ exports.getFilters = async (req, res) => {
   let q = {};
 
   if (req.query.keyword)
-    // Find filters whose searchKeywords field (of type string[]) contains req.query.keyword
-    q = { searchKeywords: { $regex: req.query.keyword, $options: 'i' } };
+    // Find filters whose keywords field (of type string[]) contains req.query.keyword
+    q = { keywords: { $regex: req.query.keyword, $options: 'i' } };
 
   try {
     const filters = await Filter.find(q);

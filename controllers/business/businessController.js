@@ -127,38 +127,47 @@ exports.findBusinesses = async function (req, res, next) {
 
 exports.filterBusinesses = async (req, res) => {
   try {
-    let { filterIds, city, stateCode, page = 1, limit = 20 } = req.query;
+    let { tags, city, stateCode, page = 1, limit = 20 } = req.query;
 
-    filterIds = req.query.filters
+    tags = tags
       ?.split(',')
       .map(id => id.trim())
       .filter(id => !!id);
 
-    if (!filterIds)
+    console.log(tags);
+
+    if (!tags?.length)
       return res.json({ status: 'ERROR', msg: 'Filters not specified correctly' });
 
-    const filters = await Filter.find({ _id: { $in: filterIds } }).select(
-      'SIC2Categories SIC4Categories SIC8Categories'
-    );
+    // const filters = await Filter.find({ _id: { $in: filterIds } }).select(
+    //   'SIC2Categories SIC4Categories SIC8Categories'
+    // );
 
-    const sic2Filters = new Set(filters.map(f => f.SIC2Categories).flat());
-    const sic4Filters = new Set(filters.map(f => f.SIC4Categories).flat());
-    const sic8Filters = new Set(filters.map(f => f.SIC8Categories).flat());
+    // const sic2Filters = new Set(filters.map(f => f.SIC2Categories).flat());
+    // const sic4Filters = new Set(filters.map(f => f.SIC4Categories).flat());
+    // const sic8Filters = new Set(filters.map(f => f.SIC8Categories).flat());
     const skip = limit * (page - 1);
 
-    const q = {
-      SIC2: { $in: [...sic2Filters] },
-      SIC4: { $in: [...sic4Filters] },
-      SIC8: [...sic8Filters], // This also works same way as using the $in operator
+    const query = {
+      // SIC2: { $in: [...sic2Filters] },
+      // SIC4: { $in: [...sic4Filters] },
+      // SIC8: [...sic8Filters], // This also works same way as using the $in operator
+      // SIC8: { $or: tags.map(tag => ({ $regex: `^${tag}` })) },
+      SIC8: { $in: tags },
       city: stringUtils.toTitleCase(city),
       stateCode: stateCode?.toUpperCase() || '',
     };
     const [businesses, count] = await Promise.all([
-      Business.find(q).skip(skip).limit(limit),
-      Business.find(q).count(),
+      Business.find(query).skip(skip).limit(limit),
+      Business.find(query).count(),
     ]);
 
-    res.json({ status: 'SUCCESS', results: businesses.length, total: count, businesses });
+    res.json({
+      status: 'SUCCESS',
+      results: businesses.length,
+      total: count,
+      businesses,
+    });
   } catch (err) {
     console.log('Error log: ', err);
     res.json({ error: err.message });
