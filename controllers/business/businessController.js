@@ -62,11 +62,8 @@ exports.getCategories = async (req, res) => {
   // - This uppercases the SIC keys of the req.query object - like { sic2: '...' } to { SIC2: '...' }
   // - It also removes non-SIC keys
   for (let k in req.query) {
-    if (!k.toLowerCase().startsWith('sic')) {
-      delete req.query[k];
-      continue;
-    }
-    req.query[k.toUpperCase()] = { $regex: `^${req.query[k]}` };
+    if (k.toLowerCase().startsWith('sic'))
+      req.query[k.toUpperCase()] = { $regex: `^${req.query[k]}` };
     delete req.query[k];
   }
 
@@ -128,6 +125,7 @@ exports.findBusinesses = async function (req, res, next) {
 exports.filterBusinesses = async (req, res) => {
   try {
     let { tags, city, stateCode, page = 1, limit = 20 } = req.query;
+    const skip = limit * (page - 1);
 
     tags = tags
       ?.split(',')
@@ -139,35 +137,18 @@ exports.filterBusinesses = async (req, res) => {
     if (!tags?.length)
       return res.json({ status: 'ERROR', msg: 'Filters not specified correctly' });
 
-    // const filters = await Filter.find({ _id: { $in: filterIds } }).select(
-    //   'SIC2Categories SIC4Categories SIC8Categories'
-    // );
-
-    // const sic2Filters = new Set(filters.map(f => f.SIC2Categories).flat());
-    // const sic4Filters = new Set(filters.map(f => f.SIC4Categories).flat());
-    // const sic8Filters = new Set(filters.map(f => f.SIC8Categories).flat());
-    const skip = limit * (page - 1);
-
     const query = {
-      // SIC2: { $in: [...sic2Filters] },
-      // SIC4: { $in: [...sic4Filters] },
-      // SIC8: [...sic8Filters], // This also works same way as using the $in operator
-      // SIC8: { $or: tags.map(tag => ({ $regex: `^${tag}` })) },
-      SIC8: { $in: tags },
+      $or: tags.map(tag => ({ SIC8: { $regex: `^${tag}` } })),
       city: stringUtils.toTitleCase(city),
       stateCode: stateCode?.toUpperCase() || '',
     };
+
     const [businesses, count] = await Promise.all([
       Business.find(query).skip(skip).limit(limit),
       Business.find(query).count(),
     ]);
 
-    res.json({
-      status: 'SUCCESS',
-      results: businesses.length,
-      total: count,
-      businesses,
-    });
+    res.json({ status: 'SUCCESS', results: businesses.length, total: count, businesses });
   } catch (err) {
     console.log('Error log: ', err);
     res.json({ error: err.message });
