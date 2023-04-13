@@ -31,6 +31,7 @@ const businessSchema = new mongoose.Schema(
         approvedByBusinessOwner: { type: Boolean, default: false },
       },
     ],
+    claimedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   },
   {
     toJSON: { virtuals: true },
