@@ -586,7 +586,7 @@ exports.claimBusiness = async (req, res, next) => {
   });
 
   business.claimedBy = req.user._id;
-  await business.save();
+  await business.save({ validateBeforeSave: false });
 
   res.status(201).json({
     status: 'SUCCESS',

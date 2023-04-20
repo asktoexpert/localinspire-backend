@@ -8,6 +8,8 @@ router
   .route('/search')
   .get(cityCacheController.searchCachedCities, cityController.searchCities);
 
+router.route('/').get(cityController.getAllCities);
+
 router.get('/modify/', async (req, res) => {
   const cities = await City.find({});
   res.json(cities);

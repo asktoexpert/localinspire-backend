@@ -1,7 +1,22 @@
 const cityQueries = require('../databases/redis/queries/city.queries');
 const Business = require('../models/Business');
+const City = require('../models/City');
 const arrayUtils = require('../utils/arrayUtils');
 const { toTitleCase } = require('../utils/string-utils');
+
+exports.getAllCities = async (req, res) => {
+  try {
+    const cities = await City.find();
+    res.status(200).json({ status: 'SUCCESS', results: cities.length, cities });
+  } catch (err) {
+    console.log('Error: ', err);
+
+    res.status(500).json({
+      status: 'ERROR',
+      msg: err.message,
+    });
+  }
+};
 
 exports.searchCities = async (req, res, next) => {
   const { textQuery } = req.searchCitiesParams || req.query;

@@ -11,6 +11,10 @@ const citySchema = new mongoose.Schema(
     lng: Number,
     density: Number,
     zips: String,
+
+    price: Number,
+    isFeatured: { type: Boolean, default: false },
+    searchesCount: { type: Number, default: 0 },
   },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
