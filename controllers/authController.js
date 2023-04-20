@@ -11,7 +11,7 @@ const stringUtils = require('../utils/string-utils');
 const emailService = require('../services/emailService');
 const axios = require('axios');
 const businessQueries = require('../databases/redis/queries/business.queries');
-const Business = require('../models/business/Business');
+const Business = require('../models/Business');
 
 // const { redisClient } = require('../databases/redis');
 

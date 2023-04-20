@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const msgController = require('../controllers/message/msgController');
+const msgController = require('../controllers/msgController');
 const router = express.Router();
 
 router.route('/to/:recipientId').post(authController.protect, msgController.sendMessage);

@@ -1,6 +1,6 @@
-const BusinessAnswer = require('../models/business/BusinessAnswer');
-const BusinessQuestion = require('../models/business/BusinessQuestion');
-const BusinessReview = require('../models/business/BusinessReview');
+const BusinessAnswer = require('../models/BusinessAnswer');
+const BusinessQuestion = require('../models/BusinessQuestion');
+const BusinessReview = require('../models/BusinessReview');
 const Report = require('../models/Report');
 const User = require('../models/user/User');
 

@@ -2,19 +2,19 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 const sharp = require('sharp');
 
-const { userPublicFieldsString } = require('../../utils/populate-utils');
-const userController = require('../user/userController');
-const cloudinaryService = require('../../services/cloudinaryService');
+const { userPublicFieldsString } = require('../utils/populate-utils');
+const userController = require('./userController');
+const cloudinaryService = require('../services/cloudinaryService');
 const { v4: uuidv4 } = require('uuid');
 
-const Business = require('../../models/business/Business');
-const BusinessReview = require('../../models/business/BusinessReview');
-const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/BusinessAnswer');
-const User = require('../../models/user/User');
-const businessQueries = require('../../databases/redis/queries/business.queries');
-const arrayUtils = require('../../utils/arrayUtils');
-const reviewQueries = require('../../databases/redis/queries/user.queries');
+const Business = require('../models/Business');
+const BusinessReview = require('../models/BusinessReview');
+const BusinessQuestion = require('../models/BusinessQuestion');
+const BusinessAnswer = require('../models/BusinessAnswer');
+const User = require('../models/user/User');
+const businessQueries = require('../databases/redis/queries/business.queries');
+const arrayUtils = require('../utils/arrayUtils');
+const reviewQueries = require('../databases/redis/queries/user.queries');
 
 exports.resizeReviewPhotos = async (req, res, next) => {
   console.log('Req files: ', req.files);

@@ -1,7 +1,7 @@
-const cityQueries = require('../../databases/redis/queries/city.queries');
-const Business = require('../../models/business/Business');
-const arrayUtils = require('../../utils/arrayUtils');
-const { toTitleCase } = require('../../utils/string-utils');
+const cityQueries = require('../databases/redis/queries/city.queries');
+const Business = require('../models/Business');
+const arrayUtils = require('../utils/arrayUtils');
+const { toTitleCase } = require('../utils/string-utils');
 
 exports.searchCities = async (req, res, next) => {
   const { textQuery } = req.searchCitiesParams || req.query;

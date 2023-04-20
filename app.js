@@ -1,7 +1,6 @@
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 
 const userRouter = require('./routers/userRouter.js');
 const businessRouter = require('./routers/businessRouter.js');
@@ -42,7 +41,6 @@ app.use('/api/v1/cities', cityRouter);
 app.use('/api/v1/questions', questionRouter);
 app.use('/api/v1/messages', msgRouter);
 app.use('/api/v1/admin', adminRouter);
-
 app.use('/api/v1/report', reportRouter);
 
 // app.all('*', (req, res) => {

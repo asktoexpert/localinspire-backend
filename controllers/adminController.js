@@ -1,6 +1,6 @@
-const Filter = require('../../models/admin/Filter');
-const Keyword = require('../../models/admin/Keyword');
-const { toTitleCase } = require('../../utils/string-utils');
+const Filter = require('../models/Filter');
+const Keyword = require('../models/Keyword');
+const { toTitleCase } = require('../utils/string-utils');
 
 exports.addNewFilter = async (req, res) => {
   try {

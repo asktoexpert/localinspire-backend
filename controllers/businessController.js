@@ -2,17 +2,15 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
-const Business = require('../../models/business/Business');
-const BusinessReview = require('../../models/business/BusinessReview');
-const Filter = require('../../models/admin/Filter');
+const Business = require('../models/Business');
+const BusinessReview = require('../models/BusinessReview');
+const Filter = require('../models/Filter');
 
-const stringUtils = require('../../utils/string-utils');
-const businessQueries = require('../../databases/redis/queries/business.queries');
-const arrayUtils = require('../../utils/arrayUtils');
-const cloudinaryService = require('../../services/cloudinaryService');
-const User = require('../../models/user/User');
-const { userPublicFieldsString } = require('../../utils/populate-utils');
-const userController = require('../user/userController');
+const stringUtils = require('../utils/string-utils');
+const businessQueries = require('../databases/redis/queries/business.queries');
+const arrayUtils = require('../utils/arrayUtils');
+const { userPublicFieldsString } = require('../utils/populate-utils');
+const BusinessClaim = require('../models/BusinessClaim');
 
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;

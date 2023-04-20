@@ -1,19 +1,21 @@
 const fs = require('fs');
-const User = require('../../models/user/User');
-const stringUtils = require('../../utils/string-utils');
-const authController = require('../authController');
-const authQueries = require('../../databases/redis/queries/auth.queries');
-const emailService = require('../../services/emailService');
+const User = require('../models/user/User');
+const stringUtils = require('../utils/string-utils');
+const authController = require('./authController');
+const authQueries = require('../databases/redis/queries/auth.queries');
+const emailService = require('../services/emailService');
 const { v4: uuid } = require('uuid');
 const sharp = require('sharp');
 const { default: mongoose, isValidObjectId } = require('mongoose');
-const cloudinaryService = require('../../services/cloudinaryService');
-const BusinessReview = require('../../models/business/BusinessReview');
-const businessQueries = require('../../databases/redis/queries/business.queries');
-const { userPublicFieldsString } = require('../../utils/populate-utils');
-const userQueries = require('../../databases/redis/queries/user.queries');
-const { redisClient } = require('../../databases/redis');
-const { usersVotesHashKey } = require('../../databases/redis/keys/user.keys');
+const cloudinaryService = require('../services/cloudinaryService');
+const BusinessReview = require('../models/BusinessReview');
+const businessQueries = require('../databases/redis/queries/business.queries');
+const { userPublicFieldsString } = require('../utils/populate-utils');
+const userQueries = require('../databases/redis/queries/user.queries');
+const { redisClient } = require('../databases/redis');
+const { usersVotesHashKey } = require('../databases/redis/keys/user.keys');
+const Business = require('../models/Business');
+const BusinessClaim = require('../models/BusinessClaim');
 
 const emailAccountConfirmationLink = async (email, firstName) => {
   // Send verification email
@@ -563,4 +565,32 @@ exports.toggeleBlockUser = async (req, res) => {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
   }
+};
+
+exports.claimBusiness = async (req, res, next) => {
+  const business = await Business.findById(req.params.id);
+  if (!business)
+    return res
+      .status(404)
+      .json({ status: 'FAIL', msg: 'This business does not exist in our records' });
+
+  if (business.claimedBy)
+    return res
+      .status(400)
+      .json({ status: 'FAIL', msg: `${business.businessName} has previously been claimed` });
+
+  const claim = await BusinessClaim.create({
+    ...req.body,
+    user: req.user._id,
+    business: business._id,
+  });
+
+  business.claimedBy = req.user._id;
+  await business.save();
+
+  res.status(201).json({
+    status: 'SUCCESS',
+    msg: `You have successfully claimed ${business.businessName}`,
+    claim,
+  });
 };

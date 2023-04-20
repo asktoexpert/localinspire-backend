@@ -29,7 +29,7 @@ const userSchema = mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ['USER', 'CITY_MANAGER', 'BUSINESS_OWNER', 'MAIN_ADMIN'],
+      enum: ['USER', 'MAIN_ADMIN'],
       default: 'USER',
     },
 
@@ -80,6 +80,8 @@ const userSchema = mongoose.Schema(
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     profileViews: { type: Number, default: 0 },
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    businessesClaimed: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Business' }],
+    citiesClaimed: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Business' }],
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );

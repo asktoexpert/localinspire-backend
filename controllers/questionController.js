@@ -1,17 +1,15 @@
 const fs = require('fs');
 const mongoose = require('mongoose');
 
-const Business = require('../../models/business/Business');
-const BusinessReview = require('../../models/business/BusinessReview');
-const BusinessQuestion = require('../../models/business/BusinessQuestion');
-const BusinessAnswer = require('../../models/business/BusinessAnswer');
-const User = require('../../models/user/User');
-const { userPublicFieldsString } = require('../../utils/populate-utils');
-const userController = require('../user/userController');
-const {
-  getCachedBusinessReviewers,
-} = require('../../databases/redis/queries/business.queries');
-const { updateUserTotalHelpfulVotes } = require('../../databases/redis/queries/user.queries');
+const Business = require('../models/Business');
+const BusinessReview = require('../models/BusinessReview');
+const BusinessQuestion = require('../models/BusinessQuestion');
+const BusinessAnswer = require('../models/BusinessAnswer');
+const User = require('../models/user/User');
+const { userPublicFieldsString } = require('../utils/populate-utils');
+const userController = require('./userController');
+const { getCachedBusinessReviewers } = require('../databases/redis/queries/business.queries');
+const { updateUserTotalHelpfulVotes } = require('../databases/redis/queries/user.queries');
 
 const getMostHelpfulAnswerToQuestion = async (q_id, { returnDoc = false }) => {
   try {

@@ -1,6 +1,6 @@
-const { redisClient } = require('../../databases/redis');
-const cityQueries = require('../../databases/redis/queries/city.queries');
-const arrayUtils = require('../../utils/arrayUtils');
+const { redisClient } = require('../databases/redis');
+const cityQueries = require('../databases/redis/queries/city.queries');
+const arrayUtils = require('../utils/arrayUtils');
 
 exports.searchCachedCities = async (req, res, next) => {
   let { textQuery } = req.query;

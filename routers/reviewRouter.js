@@ -2,10 +2,9 @@ const express = require('express');
 const multer = require('multer');
 
 const authController = require('../controllers/authController');
-const reviewController = require('../controllers/review/reviewController');
-const BusinessReview = require('../models/business/BusinessReview');
+const reviewController = require('../controllers/reviewController');
+const BusinessReview = require('../models/BusinessReview');
 const { redisClient } = require('../databases/redis');
-const Business = require('../models/business/Business');
 
 const multerStorage = multer.memoryStorage();
 const upload = multer({ storage: multerStorage });

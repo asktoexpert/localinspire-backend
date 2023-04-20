@@ -1,11 +1,11 @@
 const { ConnectionTimeoutError } = require('redis');
-const { redisClient } = require('../../databases/redis');
-const { set_of_all_business_categories } = require('../../databases/redis/keys/business.keys');
-const businessQueries = require('../../databases/redis/queries/business.queries');
-const Business = require('../../models/business/Business');
-const arrayUtils = require('../../utils/arrayUtils');
-const categoryUtils = require('../../utils/category-utils');
-const stringUtils = require('../../utils/string-utils');
+const { redisClient } = require('../databases/redis');
+const { set_of_all_business_categories } = require('../databases/redis/keys/business.keys');
+const businessQueries = require('../databases/redis/queries/business.queries');
+const Business = require('../models/Business');
+const arrayUtils = require('../utils/arrayUtils');
+const categoryUtils = require('../utils/category-utils');
+const stringUtils = require('../utils/string-utils');
 
 exports.searchCachedBusinessCategories = async function (req, res, next) {
   // await redisClient.DEL('set_of_all_business_categories');

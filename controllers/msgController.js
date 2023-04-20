@@ -1,6 +1,6 @@
-const Message = require('../../models/Message');
-const Notification = require('../../models/Notification');
-const User = require('../../models/user/User');
+const Message = require('../models/Message');
+const Notification = require('../models/Notification');
+const User = require('../models/user/User');
 
 exports.sendMessage = async (req, res) => {
   try {

@@ -1,14 +1,11 @@
 const express = require('express');
 
-const businessController = require('../controllers/business/businessController');
-const authController = require('../controllers/authController');
-const businessCacheController = require('../controllers/business/businessCacheController');
-
-const BusinessQuestion = require('../models/business/BusinessQuestion');
-const BusinessReview = require('../models/business/BusinessReview');
-const Business = require('../models/business/Business');
+const businessController = require('../controllers/businessController');
+const businessCacheController = require('../controllers/businessCacheController');
 
 const multer = require('multer');
+const authController = require('../controllers/authController');
+const userController = require('../controllers/userController');
 
 // const multerStorage = multer.diskStorage({
 //   destination(req, file, cb) {
@@ -45,7 +42,10 @@ router
   );
 router.route('/categories/:type').get(businessController.getCategories);
 router.route('/:id').get(businessController.getBusinessById); // Get business by id
+
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness); // Get tips from past visitors about a business
 router.route('/:id/overall-rating').get(businessController.getOverallBusinessRatingStats);
+
+router.post('/:id/claim', authController.protect, userController.claimBusiness);
 
 module.exports = router;
