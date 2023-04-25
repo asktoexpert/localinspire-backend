@@ -46,6 +46,9 @@ router.route('/:id').get(businessController.getBusinessById); // Get business by
 router.route('/:id/tips').get(businessController.getTipsAboutBusiness); // Get tips from past visitors about a business
 router.route('/:id/overall-rating').get(businessController.getOverallBusinessRatingStats);
 
-router.post('/:id/claim', authController.protect, userController.claimBusiness);
+router
+  .route('/:id/claim')
+  .post(authController.protect, businessController.claimBusiness)
+  .get(authController.protect, businessController.getBusinessClaim);
 
 module.exports = router;

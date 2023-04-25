@@ -14,6 +14,7 @@ const businessClaimSchema = new mongoose.Schema(
       required: [true, 'Please enter an email address'],
     },
     role: {
+      type: String,
       enum: [
         'Owner',
         'Business Manager',
@@ -21,6 +22,11 @@ const businessClaimSchema = new mongoose.Schema(
         'I work here and have permission to claim',
         'Other',
       ],
+    },
+    pricingPlan: {
+      type: String,
+      enum: ['FREE', 'SPONSORED_BUSINESS_LISTING', 'ENHANCED_BUSINESS_PROFILE'],
+      default: 'FREE',
     },
   },
   { timestamps: true, toObject: { virtuals: true }, toJSON: { virtuals: true } }

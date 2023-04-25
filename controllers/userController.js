@@ -566,31 +566,3 @@ exports.toggeleBlockUser = async (req, res) => {
     res.status(400).json({ status: 'FAIL' });
   }
 };
-
-exports.claimBusiness = async (req, res, next) => {
-  const business = await Business.findById(req.params.id);
-  if (!business)
-    return res
-      .status(404)
-      .json({ status: 'FAIL', msg: 'This business does not exist in our records' });
-
-  if (business.claimedBy)
-    return res
-      .status(400)
-      .json({ status: 'FAIL', msg: `${business.businessName} has previously been claimed` });
-
-  const claim = await BusinessClaim.create({
-    ...req.body,
-    user: req.user._id,
-    business: business._id,
-  });
-
-  business.claimedBy = req.user._id;
-  await business.save({ validateBeforeSave: false });
-
-  res.status(201).json({
-    status: 'SUCCESS',
-    msg: `You have successfully claimed ${business.businessName}`,
-    claim,
-  });
-};

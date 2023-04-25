@@ -244,3 +244,53 @@ exports.getOverallBusinessRatingStats = async (req, res) => {
     res.json({ error: err });
   }
 };
+
+exports.claimBusiness = async (req, res, next) => {
+  try {
+    const business = await Business.findById(req.params.id);
+    if (!business)
+      return res
+        .status(404)
+        .json({ status: 'FAIL', msg: 'This business does not exist in our records' });
+
+    if (business.claimedBy)
+      return res
+        .status(400)
+        .json({ status: 'FAIL', msg: `${business.businessName} has previously been claimed` });
+
+    const claim = await BusinessClaim.create({
+      ...req.body,
+      user: req.user._id,
+      business: business._id,
+    });
+
+    business.claimedBy = req.user._id;
+    await business.save({ validateBeforeSave: false });
+
+    res.status(201).json({
+      status: 'SUCCESS',
+      msg: `You have successfully claimed ${business.businessName}`,
+      claim,
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.getBusinessClaim = async (req, res) => {
+  try {
+    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate([
+      { path: 'user', select: 'firstName lastName'},
+      { path: 'business', select: 'businessName'},
+    ]);
+    res.json({ status: 'SUCCESS', claim });
+  } catch (err) {
+    console.log(err);
+    res.json({ error: err });
+  }
+};
+
+exports.selectBusinessClaimPlan = async (req, res) => {
+
+};
