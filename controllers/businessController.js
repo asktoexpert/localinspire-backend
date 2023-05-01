@@ -12,6 +12,8 @@ const arrayUtils = require('../utils/arrayUtils');
 const { userPublicFieldsString } = require('../utils/populate-utils');
 const BusinessClaim = require('../models/BusinessClaim');
 
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
   console.log('Query in main controller: ', textQuery);
@@ -78,7 +80,7 @@ exports.getCategories = async (req, res) => {
     res.status(200).json({ status: 'SUCCESS', categories });
   } catch (err) {
     console.log('Error log: ', err);
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -116,7 +118,7 @@ exports.findBusinesses = async function (req, res, next) {
     });
   } catch (err) {
     console.log('Error log: ', err);
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -149,7 +151,7 @@ exports.filterBusinesses = async (req, res) => {
     res.json({ status: 'SUCCESS', results: businesses.length, total: count, businesses });
   } catch (err) {
     console.log('Error log: ', err);
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -167,7 +169,7 @@ exports.getBusinessById = async (req, res) => {
     });
   } catch (err) {
     console.log('Error log: ', err);
-    res.json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -195,7 +197,7 @@ exports.getTipsAboutBusiness = async (req, res, next) => {
     res.status(200).json({ status: 'SUCCESS', total: responses[0], data: responses[1] });
   } catch (err) {
     console.log(err);
-    res.json({ error: err });
+    res.status(400).json({ error: err });
   }
 };
 
@@ -207,7 +209,7 @@ exports.getReviewersOfBusiness = async (req, res) => {
       .json({ status: 'SUCCESS', results: reviewerIds?.length, reviewers: reviewerIds });
   } catch (err) {
     console.log(err);
-    res.json({ error: err });
+    res.status(400).json({ error: err });
   }
 };
 
@@ -241,7 +243,7 @@ exports.getOverallBusinessRatingStats = async (req, res) => {
     res.status(200).json({ status: 'SUCCESS', overallFeatureRatings, recommendationStats });
   } catch (err) {
     console.log(err);
-    res.json({ error: err });
+    res.status(400).json({ error: err });
   }
 };
 
@@ -274,23 +276,85 @@ exports.claimBusiness = async (req, res, next) => {
     });
   } catch (err) {
     console.log(err);
-    res.json({ error: err });
+    res.status(400).json({ error: err });
   }
 };
 
 exports.getBusinessClaim = async (req, res) => {
   try {
     const claim = await BusinessClaim.findOne({ business: req.params.id }).populate([
-      { path: 'user', select: 'firstName lastName'},
-      { path: 'business', select: 'businessName'},
+      { path: 'user', select: 'firstName lastName' },
+      { path: 'business', select: 'businessName' },
     ]);
     res.json({ status: 'SUCCESS', claim });
   } catch (err) {
     console.log(err);
-    res.json({ error: err });
+    res.status(400).json({ error: err });
   }
 };
 
-exports.selectBusinessClaimPlan = async (req, res) => {
+exports.getBusinessClaimCheckoutSession = async (req, res) => {
+  try {
+    console.log(req.host, req.hostname, req.headers.host, req.headers.hostname);
+    const packages = {
+      sponsored: 'Sponsored Business Listing',
+      enhanced: 'Enhanced Business Profile',
+    };
 
+    const packg = req.query.package.toLowerCase();
+    const businessPageUrl = req.query.redirectUrl;
+
+    if (!(packg in packages))
+      return res.status(400).json({
+        status: 'FAIL',
+        msg: 'Invalid package specified. Please specify either sponsored_business_listing or enhanced_business_profile as a "package" query param',
+      });
+
+    if (!businessPageUrl?.length)
+      return res.status(400).json({
+        status: 'FAIL',
+        msg: "No slug specified for this business page via a 'slug' query param",
+      });
+
+    // Get business claim
+    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate([
+      { path: 'user', select: 'firstName lastName' },
+      { path: 'business', select: 'businessName address images' },
+    ]);
+
+    const frontendUrl = {
+      development: process.env.LOCALINSPIRE_FRONTEND_URL_DEV,
+      production: process.env.LOCALINSPIRE_FRONTEND_URL_PROD,
+    };
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: frontendUrl[process.env.NODE_ENV].concat(businessPageUrl || ''),
+      // success_url: `${req.protocol}://${req.get('host')}`,
+      client_reference_id: claim.business._id,
+      customer: req.user._id,
+      customer_email: req.user.email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${packages[packg]} for ${claim.business.businessName}, ${claim.business.address}`,
+              images: claim.business.images?.slice(0, 8)?.map(img => img.imgUrl) || undefined,
+            },
+            unit_amount_decimal: 50, // Price in cents
+          },
+          quantity: 1,
+        },
+      ],
+      // cancel_url: 'https://localinspire.vercel.app/',
+      // success_url: `${req.protocol}://${req.get(hostname)}/payment-success`,
+      // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
+    });
+    res.status(200).json({ status: 'SUCCESS', session });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ error: err });
+  }
 };

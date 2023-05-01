@@ -51,4 +51,10 @@ router
   .post(authController.protect, businessController.claimBusiness)
   .get(authController.protect, businessController.getBusinessClaim);
 
+router.get(
+  '/:id/claim/checkout-session',
+  authController.protect,
+  businessController.getBusinessClaimCheckoutSession
+);
+
 module.exports = router;
