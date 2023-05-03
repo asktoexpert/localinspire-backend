@@ -32,6 +32,7 @@ router
   .get(businessCacheController.findCachedBusinesses, businessController.findBusinesses);
 
 router.route('/filter').get(businessController.filterBusinesses);
+router.get('/upgrade-plans', businessController.getBusinessUpgradePlans);
 
 // Business categories text search
 router

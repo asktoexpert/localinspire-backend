@@ -293,63 +293,59 @@ exports.getBusinessClaim = async (req, res) => {
   }
 };
 
+exports.getBusinessUpgradePlans = async (req, res) => {
+  try {
+    const data = await stripe.prices.list();
+    res.json({ status: 'SUCCESS', ...data });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ error: err });
+  }
+};
+
 exports.getBusinessClaimCheckoutSession = async (req, res) => {
   try {
-    console.log(req.host, req.hostname, req.headers.host, req.headers.hostname);
-    const packages = {
-      sponsored: 'Sponsored Business Listing',
-      enhanced: 'Enhanced Business Profile',
-    };
+    const returnUrl = req.query.returnUrl;
+    const prices = await stripe.prices.list();
+    const foundStripePrice = prices.data.find(pr => pr.id === req.query.priceId);
 
-    const packg = req.query.package.toLowerCase();
-    const businessPageUrl = req.query.redirectUrl;
-
-    if (!(packg in packages))
+    if (!foundStripePrice)
       return res.status(400).json({
         status: 'FAIL',
-        msg: 'Invalid package specified. Please specify either sponsored_business_listing or enhanced_business_profile as a "package" query param',
+        msg: 'Invalid package specified. This is not a valid business upgrade package',
       });
 
-    if (!businessPageUrl?.length)
+    if (!returnUrl?.length)
       return res.status(400).json({
         status: 'FAIL',
         msg: "No slug specified for this business page via a 'slug' query param",
       });
 
     // Get business claim
-    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate([
-      { path: 'user', select: 'firstName lastName' },
-      { path: 'business', select: 'businessName address images' },
-    ]);
+    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate(
+      'business',
+      'businessName address images'
+    );
+
+    console.log(claim);
 
     const frontendUrl = {
       development: process.env.LOCALINSPIRE_FRONTEND_URL_DEV,
       production: process.env.LOCALINSPIRE_FRONTEND_URL_PROD,
     };
 
+    // const stripeCustomer = await stripe.customers.create({ email: req.user.email });
+    // stripeCustomer.id is valid
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      success_url: frontendUrl[process.env.NODE_ENV].concat(businessPageUrl || ''),
-      // success_url: `${req.protocol}://${req.get('host')}`,
+      mode: 'subscription',
+      billing_address_collection: 'auto',
+      line_items: [{ price: foundStripePrice.id, quantity: 1 }], // For metered billing, do not pass 'quantity'
       client_reference_id: claim.business._id,
       customer: req.user._id,
       customer_email: req.user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `${packages[packg]} for ${claim.business.businessName}, ${claim.business.address}`,
-              images: claim.business.images?.slice(0, 8)?.map(img => img.imgUrl) || undefined,
-            },
-            unit_amount_decimal: 50, // Price in cents
-          },
-          quantity: 1,
-        },
-      ],
-      // cancel_url: 'https://localinspire.vercel.app/',
-      // success_url: `${req.protocol}://${req.get(hostname)}/payment-success`,
+      success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl || ''),
       // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
     });
     res.status(200).json({ status: 'SUCCESS', session });
@@ -358,3 +354,5 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
     res.status(400).json({ error: err });
   }
 };
+
+exports.onBusinessUpgradePayment = async (req, res) => {};
