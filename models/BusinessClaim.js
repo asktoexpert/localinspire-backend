@@ -37,7 +37,7 @@ const businessClaimSchema = new mongoose.Schema(
     payment: {
       status: String, // 'PAID'
       amountPaid: Number,
-      currency: { type: String, enum: 'USD', default: 'USD' },
+      currency: { type: String },
       stripeSubscriptionId: String,
       paidDate: Date,
     },
