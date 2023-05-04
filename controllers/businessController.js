@@ -378,7 +378,6 @@ const acknowledgeBusinessClaimPayment = async session => {
     ];
 
     const claim = await BusinessClaim.findOne({ business: session.client_reference_id });
-    console.log('In Acknowledge, claim: ', claim);
 
     const prices = await stripe.prices.list();
 
@@ -394,14 +393,14 @@ const acknowledgeBusinessClaimPayment = async session => {
     claim.currentPlan = price.nickname;
     claim.payment = {
       status: session.payment_status,
-      amountPaid: session.amount_subtotal,
+      amountPaid: session.amount_subtotal / 100, // From cents to dollars
       currency: session.currency,
       stripeSubscriptionId: session.subscription,
       paidDate,
     };
 
     await claim.save();
-    console.log(claim);
+    console.log('Updated claim: ', claim);
   } catch (err) {
     console.log(err);
     res.status(400).json({ error: err });
@@ -413,7 +412,7 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
   let event;
 
   console.log('Webhook controller log: ', { signature, 'req.body': req.body });
-  
+
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
