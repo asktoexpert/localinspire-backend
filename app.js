@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 
 // Must come before express.json()
 app.post(
-  'stripe-webhook-checkout',
+  '/stripe-webhook-checkout',
   express.raw({ type: 'application/json' }),
   businessController.stripePaymentWebhookHandler
 );
