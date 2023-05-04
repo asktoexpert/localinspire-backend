@@ -357,7 +357,7 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
 
 exports.stripePaymentWebhookHandler = async (req, res) => {
   try {
-    const signature = request.headers['stripe-signature'];
+    const signature = req.headers['stripe-signature'];
     const event = req.body;
 
     console.log('Webhook controller log: ', { signature, event });
@@ -365,6 +365,6 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
     res.status(200).json({ status: 'SUCCESS' });
   } catch (err) {
     console.log(err);
-    res.status(400).json({ error: err });
+    res.status(400).json({ error: err.message });
   }
 };
