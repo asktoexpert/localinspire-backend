@@ -370,7 +370,7 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
   } catch (err) {
     const errMsg = `Webhook signature verification failed: ${err.message}`;
     console.log(errMsg);
-    return res.status(400).json({ status: 'FAIL', error: errMsg });
+    return res.status(400).send(errMsg);
   }
 
   console.log('Created event: ', event);
