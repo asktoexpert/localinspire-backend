@@ -356,15 +356,71 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
 };
 
 exports.stripePaymentWebhookHandler = async (req, res) => {
+  const signature = req.headers['stripe-signature'];
+  let event;
+
+  console.log('Webhook controller log: ', { signature, 'req.body': req.body });
+
   try {
-    const signature = req.headers['stripe-signature'];
-    const event = req.body;
-
-    console.log('Webhook controller log: ', { signature, event });
-
-    res.status(200).json({ status: 'SUCCESS' });
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_ENDPOINT_SECRET
+    );
   } catch (err) {
-    console.log(err);
-    res.status(400).json({ error: err.message });
+    const errMsg = `Webhook signature verification failed: ${err.message}`;
+    console.log(errMsg);
+    return res.status(400).json({ status: 'FAIL', error: errMsg });
   }
+
+  console.log('Created event: ', event);
+
+  let subscription;
+  let status;
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: checkout.session.completed; Subscription status is ${status}.`);
+
+    case 'customer.subscription.trial_will_end':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(
+        `Event: customer.subscription.trial_will_end; Subscription status is ${status}.`
+      );
+      // Then define and call a method to handle the subscription trial ending.
+      // handleSubscriptionTrialEnding(subscription);
+      break;
+    case 'customer.subscription.deleted':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: customer.subscription.deleted; Subscription status is ${status}.`);
+      // Then define and call a method to handle the subscription deleted.
+      // handleSubscriptionDeleted(subscriptionDeleted);
+      break;
+    case 'customer.subscription.created':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: customer.subscription.created; Subscription status is ${status}.`);
+      // Then define and call a method to handle the subscription created.
+      // handleSubscriptionCreated(subscription);
+      break;
+    case 'customer.subscription.updated':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: customer.subscription.updated; Subscription status is ${status}.`);
+      // Then define and call a method to handle the subscription update.
+      // handleSubscriptionUpdated(subscription);
+      break;
+    default:
+      // Unexpected event type
+      console.log(`Unhandled event type ${event.type}.`);
+  }
+  // Return a 200 response to acknowledge receipt of the event
+  response.send();
+
+  res.status(200).json({ status: 'SUCCESS' });
 };
