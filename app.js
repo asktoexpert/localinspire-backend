@@ -10,6 +10,7 @@ const reviewRouter = require('./routers/reviewRouter');
 const reportRouter = require('./routers/reportRouter');
 const msgRouter = require('./routers/msgRouter');
 const adminRouter = require('./routers/adminRouter');
+const businessController = require('./controllers/businessController');
 
 const app = express();
 
@@ -21,7 +22,6 @@ const clientUrl =
 const corsConfig = { origin: clientUrl, methods: ['GET', 'POST', 'PATCH', 'HEAD', 'DELETE'] };
 
 app.use(cors(corsConfig));
-
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -29,10 +29,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Must come before express.json()
+app.post(
+  '/stripe-webhook',
+  express.raw({ type: 'application/json' }),
+  businessController.stripePaymentWebhookHandler
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-
 // Routes
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/businesses', businessRouter);

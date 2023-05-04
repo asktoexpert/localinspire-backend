@@ -306,7 +306,7 @@ exports.getBusinessUpgradePlans = async (req, res) => {
 exports.getBusinessClaimCheckoutSession = async (req, res) => {
   try {
     const returnUrl = req.query.returnUrl;
-    const prices = await stripe.prices.list();
+    const prices = await stripe.prices.list({ expand: ['data.product'] });
     const foundStripePrice = prices.data.find(pr => pr.id === req.query.priceId);
 
     if (!foundStripePrice)
@@ -355,4 +355,16 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
   }
 };
 
-exports.onBusinessUpgradePayment = async (req, res) => {};
+exports.stripePaymentWebhookHandler = async (req, res) => {
+  try {
+    const signature = request.headers['stripe-signature'];
+    const event = req.body;
+
+    console.log('Webhook controller log: ', { signature, event });
+
+    res.status(200).json({ status: 'SUCCESS' });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ error: err });
+  }
+};
