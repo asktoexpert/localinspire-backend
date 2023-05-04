@@ -35,7 +35,7 @@ const businessClaimSchema = new mongoose.Schema(
       default: 'free',
     },
     payment: {
-      status: String, // 'PAID'
+      status: String, // 'paid' | ...
       amountPaid: Number,
       currency: { type: String },
       stripeSubscriptionId: String,

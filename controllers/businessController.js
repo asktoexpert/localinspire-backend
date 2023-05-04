@@ -345,7 +345,7 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
         {
           price: foundStripePrice.id,
           quantity: 1, // For metered billing, do not pass 'quantity'
-          images: claim.business.images.slice(0, 8),
+          // images: claim.business.images.slice(0, 8).map(img => img.imgUrl),
         },
       ],
       client_reference_id: req.params.id,
@@ -360,7 +360,7 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
     res.status(200).json({ status: 'SUCCESS', session });
   } catch (err) {
     console.log(err);
-    res.status(400).json({ error: err });
+    res.status(400).json({ error: err.message });
   }
 };
 
@@ -409,10 +409,11 @@ const acknowledgeBusinessClaimPayment = async session => {
 };
 
 exports.stripePaymentWebhookHandler = async (req, res) => {
-  console.log('Webhook controller log: ', { signature, 'req.body': req.body });
   const signature = req.headers['stripe-signature'];
   let event;
 
+  console.log('Webhook controller log: ', { signature, 'req.body': req.body });
+  
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
