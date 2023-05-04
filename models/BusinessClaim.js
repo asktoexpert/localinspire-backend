@@ -23,10 +23,23 @@ const businessClaimSchema = new mongoose.Schema(
         'Other',
       ],
     },
-    pricingPlan: {
+    currentPlan: {
       type: String,
-      enum: ['FREE', 'SPONSORED_BUSINESS_LISTING', 'ENHANCED_BUSINESS_PROFILE'],
-      default: 'FREE',
+      enum: [
+        'free',
+        'sponsored_business_listing_monthly',
+        'enhanced_business_profile_monthly',
+        'sponsored_business_listing_yearly',
+        'enhanced_business_profile_yearly',
+      ],
+      default: 'free',
+    },
+    payment: {
+      status: String, // 'PAID'
+      amountPaid: Number,
+      currency: { type: String, enum: 'USD', default: 'USD' },
+      stripeSubscriptionId: String,
+      paidDate: Date,
     },
   },
   { timestamps: true, toObject: { virtuals: true }, toJSON: { virtuals: true } }

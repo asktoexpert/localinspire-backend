@@ -295,7 +295,7 @@ exports.getBusinessClaim = async (req, res) => {
 
 exports.getBusinessUpgradePlans = async (req, res) => {
   try {
-    const data = await stripe.prices.list();
+    const data = await stripe.prices.list({ expand: ['data.product'] });
     res.json({ status: 'SUCCESS', ...data });
   } catch (err) {
     console.log(err);
@@ -341,13 +341,22 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       billing_address_collection: 'auto',
-      line_items: [{ price: foundStripePrice.id, quantity: 1 }], // For metered billing, do not pass 'quantity'
-      client_reference_id: claim.business._id,
+      line_items: [
+        {
+          price: foundStripePrice.id,
+          quantity: 1, // For metered billing, do not pass 'quantity'
+          images: claim.business.images.slice(0, 8),
+        },
+      ],
+      client_reference_id: req.params.id,
       customer: req.user._id,
       customer_email: req.user.email,
       success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl || ''),
       // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
     });
+
+    console.log('Stripe checkout session: ', session);
+
     res.status(200).json({ status: 'SUCCESS', session });
   } catch (err) {
     console.log(err);
@@ -355,11 +364,54 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
   }
 };
 
+const acknowledgeBusinessClaimPayment = async session => {
+  console.log('/////// Acknowledge function begines//////////');
+  try {
+    console.log('Acknowledged Session: ', session);
+    const paidDate = new Date();
+
+    const priceNicknames = [
+      'sponsored_business_listing_monthly',
+      'sponsored_business_listing_yearly',
+      'enhanced_business_profile_monthly',
+      'enhanced_business_profile_yearly',
+    ];
+
+    const claim = await BusinessClaim.findOne({ business: session.client_reference_id });
+    console.log('In Acknowledge, claim: ', claim);
+
+    const prices = await stripe.prices.list();
+
+    const price = prices.data.find(pr => {
+      return (
+        priceNicknames.includes(pr.nickname) &&
+        +pr.unit_amount_decimal === +session.amount_subtotal
+      );
+    });
+
+    console.log({ price });
+
+    claim.currentPlan = price.nickname;
+    claim.payment = {
+      status: session.payment_status,
+      amountPaid: session.amount_subtotal,
+      currency: session.currency,
+      stripeSubscriptionId: session.subscription,
+      paidDate,
+    };
+
+    await claim.save();
+    console.log(claim);
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ error: err });
+  }
+};
+
 exports.stripePaymentWebhookHandler = async (req, res) => {
+  console.log('Webhook controller log: ', { signature, 'req.body': req.body });
   const signature = req.headers['stripe-signature'];
   let event;
-
-  console.log('Webhook controller log: ', { signature, 'req.body': req.body });
 
   try {
     event = stripe.webhooks.constructEvent(
@@ -368,12 +420,10 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
       process.env.STRIPE_WEBHOOK_ENDPOINT_SECRET
     );
   } catch (err) {
-    const errMsg = `Webhook signature verification failed: ${err.message}`;
-    console.log(errMsg);
-    return res.status(400).send(errMsg);
+    return res.status(400).send(`Webhook signature verification failed: ${err.message}`);
   }
 
-  console.log('Created event: ', event);
+  console.log('Webhook event: ', event);
 
   let subscription;
   let status;
@@ -384,6 +434,24 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
       subscription = event.data.object;
       status = subscription.status;
       console.log(`Event: checkout.session.completed; Subscription status is ${status}.`);
+      acknowledgeBusinessClaimPayment(event.data.object);
+      break;
+
+    case 'customer.subscription.created':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: customer.subscription.created; Subscription status is ${status}.`);
+      // Then define and call a method to handle the subscription created.
+      // handleSubscriptionCreated(subscription);
+      break;
+
+    case 'customer.subscription.updated':
+      subscription = event.data.object;
+      status = subscription.status;
+      console.log(`Event: customer.subscription.updated; Subscription status is ${status}.`);
+      // Then define and call a method to handle the subscription update.
+      // handleSubscriptionUpdated(subscription);
+      break;
 
     case 'customer.subscription.trial_will_end':
       subscription = event.data.object;
@@ -401,26 +469,10 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
       // Then define and call a method to handle the subscription deleted.
       // handleSubscriptionDeleted(subscriptionDeleted);
       break;
-    case 'customer.subscription.created':
-      subscription = event.data.object;
-      status = subscription.status;
-      console.log(`Event: customer.subscription.created; Subscription status is ${status}.`);
-      // Then define and call a method to handle the subscription created.
-      // handleSubscriptionCreated(subscription);
-      break;
-    case 'customer.subscription.updated':
-      subscription = event.data.object;
-      status = subscription.status;
-      console.log(`Event: customer.subscription.updated; Subscription status is ${status}.`);
-      // Then define and call a method to handle the subscription update.
-      // handleSubscriptionUpdated(subscription);
-      break;
+
     default:
-      // Unexpected event type
       console.log(`Unhandled event type ${event.type}.`);
   }
   // Return a 200 response to acknowledge receipt of the event
-  response.send();
-
-  res.status(200).json({ status: 'SUCCESS' });
+  res.status(200).json({ received: true });
 };
