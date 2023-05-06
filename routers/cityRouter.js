@@ -16,11 +16,7 @@ router.route('/all-states').get(cityController.getStateNames);
 
 router
   .route('/:cityId/toggle-featured')
-  .patch(
-    authController.protect,
-    authController.restrictToRoles('MAIN_ADMIN'),
-    cityController.toggleCityFeatured
-  );
+  .patch(authController.protect, cityController.toggleCityFeatured);
 
 router.get('/modify/', async (req, res) => {
   const cities = await City.find({});

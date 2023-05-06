@@ -18,15 +18,10 @@ exports.searchBusinessCategories = async function (req, res, next) {
   const { textQuery } = req.searchCategParams;
   console.log('Query in main controller: ', textQuery);
 
-  const caseSensitiveQuery = stringUtils.toTitleCase(textQuery);
-  console.log({ caseSensitiveQuery });
-
   try {
     const [result] = await Business.aggregate([
-      { $match: { SIC8: { $regex: `^${caseSensitiveQuery}` } } },
+      { $match: { SIC8: { $regex: `^${textQuery}` } } },
       { $project: { SIC8: 1 } },
-      { $group: { categories: { $addToSet: '$SIC8' }, _id: null } },
-      { $project: { _id: 0 } },
     ]);
 
     console.log('Result: ', result);
@@ -36,9 +31,7 @@ exports.searchBusinessCategories = async function (req, res, next) {
     if (categories.length) await businessQueries.cacheBusinessCategories(categories);
 
     return res.status(200).json({
-      status: 'SUCCESS',
       source: 'db',
-      results: categories.length,
       categories,
     });
   } catch (err) {
@@ -61,11 +54,6 @@ exports.getCategories = async (req, res) => {
 
   // - This uppercases the SIC keys of the req.query object - like { sic2: '...' } to { SIC2: '...' }
   // - It also removes non-SIC keys
-  for (let k in req.query) {
-    if (k.toLowerCase().startsWith('sic'))
-      req.query[k.toUpperCase()] = { $regex: `^${req.query[k]}` };
-    delete req.query[k];
-  }
 
   const qFilter = req.query;
   let categories = [];
@@ -76,7 +64,6 @@ exports.getCategories = async (req, res) => {
     (await q).forEach(categ => {
       if (categ && typeof categ === 'string' && categ != '0') categories.push(categ.trim());
     });
-    categories.sort();
     res.status(200).json({ status: 'SUCCESS', categories });
   } catch (err) {
     console.log('Error log: ', err);
@@ -88,13 +75,12 @@ exports.getCategories = async (req, res) => {
 exports.findBusinesses = async function (req, res, next) {
   const { category, cityName, stateCode, page, limit } = req.businessSearchParams;
   if (!category || !cityName || !stateCode)
-    return res.status(200).json({ status: 'SUCCESS', results: 0, businesses: [] });
+    return res.status(200).json({ status: 'FAIL', results: 0, businesses: [] });
 
   try {
     // Find businesses whose SIC8 is like the query, city matches and state matches
     const businesses = await Business.find({
       SIC8: { $regex: `${category}`, $options: 'i' },
-      city: { $regex: `^${cityName}`, $options: 'i' },
       stateCode: stateCode.toUpperCase(),
     });
 
@@ -110,10 +96,7 @@ exports.findBusinesses = async function (req, res, next) {
       }));
 
     res.status(200).json({
-      status: 'SUCCESS',
       source: 'db',
-      results: pagedBusinesses.length,
-      total: businesses.length,
       businesses: pagedBusinesses,
     });
   } catch (err) {
@@ -158,7 +141,7 @@ exports.filterBusinesses = async (req, res) => {
 exports.getBusinessById = async (req, res) => {
   try {
     const business = await Business.findById(req.params.id);
-    const found = !!business;
+    const found = !business;
 
     res.status(found ? 200 : 404).json({
       status: found ? 'SUCCESS' : 'FAIL',
@@ -188,10 +171,7 @@ exports.getTipsAboutBusiness = async (req, res, next) => {
       BusinessReview.find({ business: req.params.id }).count(),
       BusinessReview.find({ business: req.params.id })
         .sort('-createdAt')
-        .skip(skip)
-        .limit(limit)
-        .select('adviceToFutureVisitors reviewedBy reviewTitle createdAt')
-        .populate('reviewedBy', userPublicFieldsString),
+        .select('adviceToFutureVisitors reviewedBy reviewTitle createdAt'),
     ]);
 
     res.status(200).json({ status: 'SUCCESS', total: responses[0], data: responses[1] });
@@ -219,28 +199,19 @@ exports.getOverallBusinessRatingStats = async (req, res) => {
       BusinessReview.aggregate([
         { $match: { business: mongoose.Types.ObjectId(req.params.id) } },
         { $project: { featureRatings: 1 } },
-        { $unwind: '$featureRatings' },
-        {
-          $group: {
-            _id: '$featureRatings.feature',
-            avgRating: { $avg: '$featureRatings.rating' },
-          },
-        },
       ]),
 
       BusinessReview.aggregate([
         { $match: { business: mongoose.Types.ObjectId(req.params.id) } },
-        { $project: { recommends: 1 } },
-        { $group: { _id: '$recommends', count: { $sum: 1 } } },
       ]),
     ]);
 
     const recommendationStats = {
-      yes: recommendsStats?.[0]?.count,
-      no: recommendsStats?.[1]?.count,
+      yes: recommendsStats[0].count,
+      no: recommendsStats[1].count,
     };
 
-    res.status(200).json({ status: 'SUCCESS', overallFeatureRatings, recommendationStats });
+    res.status(200).json({ overallFeatureRatings, recommendationStats });
   } catch (err) {
     console.log(err);
     res.status(400).json({ error: err });
@@ -251,18 +222,15 @@ exports.claimBusiness = async (req, res, next) => {
   try {
     const business = await Business.findById(req.params.id);
     if (!business)
-      return res
-        .status(404)
-        .json({ status: 'FAIL', msg: 'This business does not exist in our records' });
+      return res.status(404).json({ msg: 'This business does not exist in our records' });
 
-    if (business.claimedBy)
+    if (!business.claimedBy)
       return res
         .status(400)
-        .json({ status: 'FAIL', msg: `${business.businessName} has previously been claimed` });
+        .json({ msg: `${business.businessName} has previously been claimed` });
 
     const claim = await BusinessClaim.create({
       ...req.body,
-      user: req.user._id,
       business: business._id,
     });
 
@@ -270,8 +238,6 @@ exports.claimBusiness = async (req, res, next) => {
     await business.save({ validateBeforeSave: false });
 
     res.status(201).json({
-      status: 'SUCCESS',
-      msg: `You have successfully claimed ${business.businessName}`,
       claim,
     });
   } catch (err) {
@@ -284,7 +250,6 @@ exports.getBusinessClaim = async (req, res) => {
   try {
     const claim = await BusinessClaim.findOne({ business: req.params.id }).populate([
       { path: 'user', select: 'firstName lastName' },
-      { path: 'business', select: 'businessName' },
     ]);
     res.json({ status: 'SUCCESS', claim });
   } catch (err) {
@@ -329,12 +294,8 @@ const acknowledgeBusinessClaimPayment = async session => {
     // Update the paid status of the claim object
     const claim = await BusinessClaim.findOne({ business: session.client_reference_id });
 
-    claim.currentPlan = price.nickname;
     claim.payment = {
       status: session.payment_status,
-      amountPaid: session.amount_subtotal / 100, // From cents to dollars
-      currency: session.currency,
-      stripeSubscriptionId: session.subscription,
       paidDate,
     };
 
@@ -354,7 +315,6 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(
       req.body,
-      signature,
       process.env.STRIPE_WEBHOOK_ENDPOINT_SECRET
     );
   } catch (err) {
@@ -368,13 +328,6 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
 
   // Handle the event
   switch (event.type) {
-    case 'checkout.session.completed':
-      subscription = event.data.object;
-      status = subscription.status;
-      console.log(`Event: checkout.session.completed; Subscription status is ${status}.`);
-      acknowledgeBusinessClaimPayment(event.data.object);
-      break;
-
     case 'customer.subscription.created':
       subscription = event.data.object;
       status = subscription.status;
@@ -388,7 +341,7 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
       status = subscription.status;
       console.log(`Event: customer.subscription.updated; Subscription status is ${status}.`);
       // Then define and call a method to handle the subscription update.
-      // handleSubscriptionUpdated(subscription);
+      acknowledgeBusinessClaimPayment(event.data.object);
       break;
 
     case 'customer.subscription.trial_will_end':
@@ -419,24 +372,10 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
   try {
     const returnUrl = req.query.returnUrl;
     const prices = await stripe.prices.list({ expand: ['data.product'] });
-    const foundStripePrice = prices.data.find(pr => pr.id === req.query.priceId);
-
-    if (!foundStripePrice)
-      return res.status(400).json({
-        status: 'FAIL',
-        msg: 'Invalid package specified. This is not a valid business upgrade package',
-      });
-
-    if (!returnUrl?.length)
-      return res.status(400).json({
-        status: 'FAIL',
-        msg: "No slug specified for this business page via a 'slug' query param",
-      });
 
     // Get business claim
     const claim = await BusinessClaim.findOne({ business: req.params.id }).populate(
-      'business',
-      'businessName address images'
+      'business'
     );
 
     console.log(claim);
@@ -451,25 +390,23 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
+      mode: 'payment',
       billing_address_collection: 'auto',
       line_items: [
         {
-          price: foundStripePrice.id,
           quantity: 1, // For metered billing, do not pass 'quantity'
-          // images: claim.business.images.slice(0, 8).map(img => img.imgUrl),
+          images: claim.business.images,
         },
       ],
-      client_reference_id: req.params.id,
+      client_reference_id: req.params.business_id,
       customer: req.user._id,
-      customer_email: req.user.email,
-      success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl || ''),
+      success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl),
       // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
     });
 
     console.log('Stripe checkout session: ', session);
 
-    res.status(200).json({ status: 'SUCCESS', session });
+    res.status(200).json({ session });
   } catch (err) {
     console.log(err);
     res.status(400).json({ error: err.message });

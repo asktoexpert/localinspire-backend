@@ -6,7 +6,7 @@ const { toTitleCase } = require('../utils/string-utils');
 
 exports.getAllCities = async (req, res) => {
   try {
-    const cities = await City.find();
+    const cities = await City.find({}).select('name imgUrl isFeatured searchesCount');
     res.status(200).json({ status: 'SUCCESS', results: cities.length, cities });
   } catch (err) {
     console.log('Error: ', err);
@@ -84,9 +84,6 @@ exports.searchCities = async (req, res, next) => {
     const [result] = await City.aggregate([
       { $match: filter },
       { $sort: { searchesCount: -1 } },
-      { $project: { cityAndState: { $concat: ['$name', ', ', '$stateCode'] } } },
-      { $group: { _id: null, cities: { $push: '$cityAndState' } } },
-      { $project: { _id: 0 } },
     ]);
 
     res.status(200).json({ results: result.cities?.length, cities: result.cities });
@@ -99,7 +96,7 @@ exports.searchCities = async (req, res, next) => {
 exports.toggleCityFeatured = async (req, res) => {
   try {
     const city = await City.findById(req.params.cityId).select('isFeatured');
-    city.isFeatured = !city.isFeatured;
+    city.isFeatured = city.isFeatured;
 
     await city.save({ validateBeforeSave: false });
     res.status(200).json({ status: 'SUCCESS', city });

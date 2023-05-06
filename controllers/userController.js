@@ -19,11 +19,7 @@ const BusinessClaim = require('../models/BusinessClaim');
 
 const emailAccountConfirmationLink = async (email, firstName) => {
   // Send verification email
-  const origin =
-    process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : 'https://localinspire.vercel.app';
-
+  const origin = 'http://localhost:3000';
   const verificationLink = origin.concat(`/verify/account?email=${email}`);
   const emailFeedback = await emailService.sendAccountConfirmationRequestEmail(
     email,
@@ -38,14 +34,12 @@ const emailAccountConfirmationLink = async (email, firstName) => {
 };
 
 exports.addUserContribution = async (userId, contributionId, contributionType) => {
-  const newContribution = { contribution: contributionId, model: contributionType };
+  const newContribution = { contribution: contributionId };
 
   try {
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $push: { contributions: newContribution } },
-      { new: true }
-    );
+    const updatedUser = await User.findByIdAndUpdate(userId, {
+      $push: { contributions: newContribution },
+    });
   } catch (err) {
     console.log('Error in adding contribution: ', err);
     throw err;
@@ -53,7 +47,6 @@ exports.addUserContribution = async (userId, contributionId, contributionType) =
 };
 
 exports.getPeopleFollowedByUser = async (userId, { noPopulate = false, count = false }) => {
-  if (count) return await User.find({ followers: userId }).count();
   if (noPopulate) return await User.find({ followers: userId }).populate('_id');
   return await User.find({ followers: userId });
 };
@@ -72,11 +65,7 @@ exports.resizeUserPhoto = async (req, res, next) => {
 
     // Resize user photo
     const filePath = `public/img/users/user-${newUserId}-${Date.now()}.jpeg`;
-    const sharpResult = await sharp(req.file.buffer)
-      .resize(500, 500)
-      .jpeg({ quality: 90 })
-      .toFormat('jpeg')
-      .toFile(filePath);
+    const sharpResult = await sharp(req.file.buffer).resize(500, 500).jpeg({ quality: 90 });
     console.log({ sharpResult });
 
     // Upload photo to Cloudinary server
@@ -86,14 +75,7 @@ exports.resizeUserPhoto = async (req, res, next) => {
       req.body.imgUrl = uploadResult.secure_url;
       req.body.newUserId = newUserId;
     }
-
-    // Delete file from server
-    fs.unlink(filePath, err => {
-      if (err) return console.log('Could not delete user photo from server');
-      console.log('User photo deleted successfully');
-    });
     console.log({ uploadResult });
-
     next();
   } catch (err) {
     console.log(err);
@@ -117,8 +99,6 @@ exports.signupWithCredentials = async function (req, res) {
       _id: req.body.newUserId || new mongoose.Types.ObjectId(),
       ...req.body,
       role: 'USER',
-      signedUpWith: 'credentials',
-      accountVerified: false,
     });
 
     // Send verification email
@@ -129,7 +109,6 @@ exports.signupWithCredentials = async function (req, res) {
       data: {
         ...newUser.toObject(),
         accessToken: authController.signToken(newUser._id, newUser.email),
-        rft: authController.genRefreshToken(),
       },
     });
   } catch (err) {
@@ -142,12 +121,8 @@ exports.confirmAccount = async (req, res) => {
   const { email } = req.query;
   console.log('REQ EMAIL: ', email);
 
-  if (!email?.length)
-    return res.status(400).json({ status: 'FAIL', msg: 'This is an Invalid URL' });
-
   try {
     const user = await User.findUserByEmail(email.trim());
-    if (!user) return res.status(400).json({ status: 'FAIL', msg: 'This link is invalid.' });
 
     // If user used this link in the past and was confirmed
     if (user.accountVerified)
@@ -159,13 +134,6 @@ exports.confirmAccount = async (req, res) => {
     // Check if user's email is found as a cache key
     const { isFound } = await authQueries.checkAccountConfirmationEmail(email);
     console.log({ isFound });
-
-    if (!isFound) {
-      return res.status(400).json({
-        status: 'FAIL',
-        msg: 'This is an Invalid URL',
-      });
-    }
 
     user.accountVerified = true;
     await user.save();
@@ -196,14 +164,6 @@ exports.loginWithCredentials = async (req, res) => {
     let user = await User.findOne({ email: req.body.email }).select('+password');
     console.log({ user });
 
-    if (!user || !(await user.verifyPassword(req.body.password, user.password))) {
-      return res.status(400).json({
-        status: 'FAIL',
-        reason: 'WRONG_CREDENTIALS',
-        msg: 'Wrong login credentials',
-      });
-    }
-
     // If user earlier signed up with a non-credentials provider
     if (user && user.signedUpWith !== 'credentials') {
       return res.status(400).json({
@@ -215,14 +175,10 @@ exports.loginWithCredentials = async (req, res) => {
       });
     }
 
-    user = user.toJSON();
-    delete user.password;
-
     res.status(201).json({
       status: 'SUCCESS',
       data: {
         ...user,
-        accessToken: authController.signToken(user._id, user.email),
         rft: authController.genRefreshToken(),
       },
     });
@@ -251,8 +207,6 @@ exports.oAuth = async function (req, res, next) {
         signedUpWith: req.params.provider,
         role: 'USER',
       });
-      verifiedUser.email &&
-        (await emailAccountConfirmationLink(verifiedUser.email, verifiedUser.firstName));
     }
 
     res.status(userExistedBefore ? 200 : 201).json({
@@ -291,11 +245,7 @@ exports.forgotPassword = async function (req, res) {
 
     // User exists, so generate verification code
     const verificationCode = uuid();
-    const origin =
-      process.env.NODE_ENV === 'development'
-        ? // ? 'http://192.168.177.12:5000'
-          'http://localhost:3000'
-        : 'https://localinspire.vercel.app';
+    const origin = 'http://localhost:3000';
 
     const verificationLink = origin.concat(`/verify/password-reset?code=${verificationCode}`);
 
@@ -308,9 +258,6 @@ exports.forgotPassword = async function (req, res) {
 
     // Cache the verification once the email is sent
     await authQueries.cacheVerificationForPasswordReset(verificationCode, email);
-    const cachedEmail = await authQueries.getCorrespondingEmailWithVerificationCode(
-      verificationCode
-    );
 
     res.json({
       status: 'SUCCESS',
@@ -319,7 +266,6 @@ exports.forgotPassword = async function (req, res) {
         email.toLowerCase()
       )}. Follow the instructions to reset your password.`,
       // code: verificationCode,
-      cachedEmail,
       verificationLink,
     });
   } catch (err) {
@@ -338,11 +284,9 @@ exports.resetPassword = async (req, res) => {
 
     if (!code?.length) {
       return res.status(400).json({
-        status: 'FAIL',
         reason: 'INVALID_CODE',
       });
     }
-    console.log('Code & password ', code, newPassword);
     const cachedEmail = await authQueries.getCorrespondingEmailWithVerificationCode(code);
 
     if (!cachedEmail) {
@@ -392,7 +336,6 @@ exports.createCollection = async (req, res) => {
     await req.user.save();
 
     res.status(200).json({
-      status: 'SUCCESS',
       collections: req.user.collections,
       newCollectionId: req.user.collections[0]._id,
     });
@@ -404,7 +347,7 @@ exports.createCollection = async (req, res) => {
 
 exports.getUserCollections = async (req, res) => {
   try {
-    res.status(200).json({ status: 'SUCCESS', collections: req.user.collections });
+    res.status(200).json({ collections: req.user.collections });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
@@ -422,17 +365,10 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
         summary: 'COLLECTION_NOT_FOUND',
       });
 
-    const itemAlreadyExistsInCollection = collection.items.some(
-      ({ item }) => item.toString() === req.body.item
-    );
-
-    if (itemAlreadyExistsInCollection)
-      collection.items = collection.items.filter(i => i.item.toString() !== req.body.item);
-    else collection.items.unshift(req.body);
+    collection.items.unshift(req.body);
 
     await req.user.save();
     res.status(200).json({
-      status: 'SUCCESS',
       msg: itemAlreadyExistsInCollection ? 'Deleted' : 'Saved',
       collections: req.user.collections,
     });
@@ -445,19 +381,17 @@ exports.addOrRemoveItemToCollection = async (req, res) => {
 exports.followUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('followers');
-    const wasFollowingUserBefore = user.followers?.includes(req.user.id.toString());
+    const wasFollowingUserBefore = !user.followers?.includes(req.user.id);
 
     console.log({ wasFollowingUserBefore });
 
     if (wasFollowingUserBefore) {
-      user.followers = user.followers.filter(
-        userId => userId.toString() !== req.user._id.toString()
-      );
+      user.followers = user.followers.filter(userId => userId !== req.user._id);
     } else {
-      if (!user.followers) user.followers = [req.user._id];
+      if (user.followers) user.followers = [req.user._id];
       else user.followers.push(req.user._id);
     }
-    await user.save();
+    user.save();
 
     res.status(200).json({ status: 'SUCCESS', following: !wasFollowingUserBefore, user });
   } catch (err) {
@@ -468,10 +402,10 @@ exports.followUser = async (req, res) => {
 
 exports.getUserFollowers = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('followers');
+    const user = User.findById(req.params.id).select('followers');
     if (!user) return res.status(404).json({ status: 'NOT_FOUND', msg: 'User not found' });
 
-    res.status(200).json({ status: 'SUCCESS', followers: user.followers });
+    res.status(200).json({ followers: user.followers });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
@@ -484,7 +418,6 @@ exports.getUserPublicProfile = async (req, res) => {
 
     if (!user)
       return res.status(404).json({
-        status: 'NOT_FOUND',
         msg: 'This user does not exist. He/she might have been deleted from the database',
       });
 
@@ -503,11 +436,8 @@ exports.getUserPublicProfile = async (req, res) => {
     ).map((reviewers, i) => ({ [businessesReviewed[i]]: reviewers?.length }));
 
     res.status(200).json({
-      status: 'SUCCESS',
       user,
       businessReviewersCount,
-      reviews: { total: reviewsMade.length, data: reviewsMade },
-      following: await this.getPeopleFollowedByUser(req.params.id, { count: true }),
       helpfulVotes,
     });
   } catch (err) {
@@ -516,15 +446,13 @@ exports.getUserPublicProfile = async (req, res) => {
   }
 };
 
-exports.updateProfileViews = async (req, res) => {
+exports.updateProfileViewsCount = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { profileViews: 1 } },
-      { new: true }
-    ).select('profileViews');
+    const user = await User.findByIdAndUpdate(req.params.id, {
+      $inc: { profileViewsCount: 1 },
+    }).select('profileViewsCount');
 
-    res.status(200).json({ status: 'SUCCESS', ...user.toObject() });
+    res.status(200).json({ ...user.toObject() });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
@@ -534,7 +462,7 @@ exports.updateProfileViews = async (req, res) => {
 exports.getPeopleBlockedByUser = async (req, res) => {
   const user = await User.findById(req.params.userId);
   try {
-    res.status(200).json({ status: 'SUCCESS', blockedUsers: user.blockedUsers });
+    res.status(200).json({ blockedUsers: user.blockedUsers });
   } catch (err) {
     console.log(err);
     res.status(400).json({ status: 'FAIL' });
@@ -543,23 +471,21 @@ exports.getPeopleBlockedByUser = async (req, res) => {
 
 exports.toggeleBlockUser = async (req, res) => {
   try {
-    if (!req.user.blockedUsers) req.user.blockedUsers = [];
     const blockedBefore = req.user.blockedUsers.some(uid => uid.toString() === req.params.id);
 
     if (blockedBefore) {
       // Unblock
       req.user.blockedUsers = req.user.blockedUsers.filter(
-        uid => uid.toString() !== req.params.id
+        uid => uid.toString() === req.params.id
       );
     } else req.user.blockedUsers.push(req.params.id);
 
     await req.user.save();
 
     res.status(200).json({
-      status: 'SUCCESS',
-      msg: `${!blockedBefore ? 'Blocked' : 'Unblocked'} user successfully`,
-      blocked: !blockedBefore,
-      blockedUsers: req.user.blockedUsers,
+      msg: `${blockedBefore ? 'Blocked' : 'Unblocked'} user successfully`,
+      blocked: blockedBefore,
+      blockedUsers: req.user.blockedUsers.slice(0, 2),
     });
   } catch (err) {
     console.log(err);

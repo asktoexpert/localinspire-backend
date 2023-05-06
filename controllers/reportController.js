@@ -9,8 +9,6 @@ exports.report = async (req, res) => {
     const reportableModels = {
       BusinessReview,
       BusinessQuestion,
-      BusinessAnswer,
-      BusinessTip: BusinessReview,
       UserProfile: User,
     };
 
@@ -23,7 +21,6 @@ exports.report = async (req, res) => {
 
     if (!reportedDocument) {
       return res.status(404).json({
-        status: 'FAIL',
         summary: 'NOT_FOUND',
         msg: `The ${req.body.model.replace(
           'Business',

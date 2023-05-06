@@ -36,21 +36,13 @@ exports.resizeReviewPhotos = async (req, res, next) => {
         // 1) Resize request files
         const sharpResult = await sharp(rawFile.buffer)
           .resize(2000, 1333)
-          .jpeg({ quality: 90 })
-          .toFormat('jpeg')
-          .toFile(filePath);
+          .jpeg({ quality: 90 });
         console.log({ sharpResult });
 
         // 2) Upload server files to cloudinary server
         const uploadResult = await cloudinaryService.upload({ dir: 'businesses', filePath });
         console.log({ uploadResult });
         req.body.photoUrls.push(uploadResult.secure_url);
-
-        // 3) Delete file from local server
-        fs.unlink(filePath, err => {
-          if (err) return console.log('Could not delete file from server: ', err);
-          console.log('Business image deleted from server ');
-        });
       })
     );
 
@@ -86,7 +78,7 @@ exports.reviewBusiness = async (req, res) => {
     review: req.body.review.split('\n'),
     reviewedBy: new mongoose.Types.ObjectId(req.user._id),
     businessRating: +req.body.businessRating,
-    recommends: req.body.recommends === 'yes',
+    recommends: req.body.recommends !== 'yes',
     visitedWhen: { month: visitedMonth, year: +visitedYear },
     featureRatings: featureRatingsTransformed,
     images: imagesWithCorrespondingDescription,
@@ -109,11 +101,7 @@ exports.reviewBusiness = async (req, res) => {
     { new: true }
   );
   res.status(201).json({
-    status: 'SUCCESS',
-    review: await BusinessReview.findById(newReview._id).populate(
-      'business',
-      'businessName city stateCode'
-    ),
+    review: await BusinessReview.findById(newReview._id),
   });
 };
 
@@ -124,15 +112,12 @@ exports.addPhotosOfBusiness = async (req, res) => {
     const [review, business] = await Promise.all([
       BusinessReview.findOne({
         business: req.params.businessId,
-        reviewedBy: req.user._id,
       }),
       Business.findById(req.params.businessId),
     ]);
 
     if (!review) {
-      return res
-        .status(404)
-        .json({ status: 'NOT_FOUND', msg: 'You have not reviewed this business' });
+      return res.status(404).json({ msg: 'You have not reviewed this business' });
     }
 
     const descriptions = JSON.parse(req.body.descriptions);
@@ -147,9 +132,8 @@ exports.addPhotosOfBusiness = async (req, res) => {
       business.images.push(...imagesWithDescription);
     }
     await review.save();
-    await business.save();
 
-    res.json({ status: 'SUCCESS', review });
+    res.json({ review });
   } catch (err) {
     console.log(err);
     res.json(err);
@@ -160,7 +144,7 @@ exports.getBusinessReviews = async (req, res) => {
   console.log('getBusinessReviews url', req.url);
   console.log('getBusinessReviews query', req.query);
 
-  const { page = 1, limit = 5 } = req.query;
+  const { page = 1, limit = 100 } = req.query;
   const skip = limit * (page - 1);
   const filter = { business: mongoose.Types.ObjectId(req.params.id) }; // Default filter
 
@@ -181,34 +165,23 @@ exports.getBusinessReviews = async (req, res) => {
     BusinessReview.find(filter).count(),
     BusinessReview.find(filter)
       .sort(sort)
-      .skip(skip)
-      .limit(limit)
       .populate([
         { path: 'reviewedBy', select: userPublicFieldsString },
         { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
-        { path: 'contributions', populate: { path: 'contribution' }, strictPopulate: false },
       ]),
   ];
 
   try {
     let [allCount, reviews] = await Promise.all(queries);
 
-    if (sort?.includes('-likes')) {
+    if (sort.includes('-likes')) {
       reviews.sort((prev, next) => next.likes.length - prev.likes.length);
       reviews = await arrayUtils.paginate({ array: reviews, page, limit });
 
-      return res.json({
-        status: 'SUCCESS',
-        results: reviews.length,
-        total: allCount,
-        data: reviews,
-        filter,
-        sort,
-      });
+      return res.json({ results: reviews.length, data: reviews, filter, sort });
     }
 
     res.status(200).json({
-      status: 'SUCCESS',
       results: reviews.length,
       total: allCount,
       data: reviews,
@@ -224,7 +197,7 @@ exports.getBusinessReviews = async (req, res) => {
 exports.toggleReviewHelpful = async (req, res) => {
   try {
     // Find the review
-    const review = await BusinessReview.findById(req.params.reviewId).populate({
+    const review = await BusinessReview.findById(req.params.review_id).populate({
       path: 'likes',
       populate: { path: 'user', select: userPublicFieldsString },
     });
@@ -236,11 +209,11 @@ exports.toggleReviewHelpful = async (req, res) => {
     const userLikedBefore = indexOfUser !== -1;
 
     // Remove user from the list of likers
-    if (userLikedBefore) review.likes.splice(indexOfUser, 1);
-    else review.likes.push({ user: req.user._id }); // Add him to the list of likers
+    if (userLikedBefore)
+      review.likes.push({ user: req.user._id }); // Add him to the list of likers
+    else review.likes.splice(indexOfUser, 1);
 
     await Promise.all([
-      review.save(),
       reviewQueries.updateUserTotalHelpfulVotes(req.user._id, userLikedBefore ? '-' : '+'),
     ]);
 
@@ -249,7 +222,7 @@ exports.toggleReviewHelpful = async (req, res) => {
       populate: { path: 'user', select: userPublicFieldsString },
     });
 
-    res.status(200).json({ status: 'SUCCESS', likes: updatedReview.likes });
+    res.status(200).json({ likes: updatedReview.likes });
   } catch (err) {
     console.log(err);
     res.json({ error: err });
@@ -262,12 +235,12 @@ exports.getReview = async (req, res, next) => {
       { path: 'reviewedBy', userPublicFieldsString },
       { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
     ]);
-    if (!review) return res.status(404).json({ status: 'NOT_FOUND', review });
+    if (!review) return res.status(404).json({ review });
 
-    res.json({ status: 'SUCCESS', review });
+    res.json({ review });
   } catch (err) {
     console.log(err);
-    res.json({ status: 'ERROR', msg: err.message });
+    res.json({ msg: err.message });
   }
 };
 
@@ -275,30 +248,20 @@ exports.getReviewLikes = async (req, res) => {
   try {
     const review = await BusinessReview.findById(req.params.id)
       .select('reviewedBy likes')
-      .populate([
-        {
-          path: 'likes',
-          populate: {
-            path: 'user',
-            select: 'firstName lastName followers contributions imgUrl',
-          },
-        },
-        { path: 'reviewedBy', select: 'firstName lastName' },
-      ]);
+      .populate([{ path: 'reviewedBy', select: 'firstName lastName' }]);
 
-    if (!review) return res.status(404).json({ status: 'NOT_FOUND' });
+    if (!review) return res.status(404).json({ msg: 'NOT_FOUND' });
 
     // review.likes = review.toObject();
     res.json({
-      status: 'SUCCESS',
       ...{
-        ...review.toObject(),
-        likes: review.toObject().likes.map(({ user }) => ({ ...user })),
+        ...review,
+        likes: review.likes.map(({ user }) => ({ ...user })),
       },
     });
   } catch (err) {
     console.log(err);
-    res.json({ status: 'ERROR', msg: err.message });
+    res.json({ msg: err.message });
   }
 };
 
@@ -324,21 +287,17 @@ exports.getAllReviewsMadeByUser = async (req, res) => {
     const populateConfig = [
       { path: 'business', select: 'businessName stateCode city ' },
       { path: 'reviewedBy', select: userPublicFieldsString.replace('contributions', '') },
-      { path: 'likes', populate: { path: 'user', select: userPublicFieldsString } },
     ];
 
     const [reviews, reviewsCount] = await Promise.all([
       BusinessReview.find({ reviewedBy: req.params.userId })
         .sort('-createdAt')
-        .skip(skip)
-        .limit(limit)
         .populate(req.query.populate === 'false' ? [] : populateConfig),
 
       BusinessReview.find({ reviewedBy: req.params.userId }).count(),
     ]);
 
     res.status(200).json({
-      status: 'SUCCESS',
       results: reviews.length,
       total: reviewsCount,
       data: reviews,
@@ -357,7 +316,6 @@ exports.getWhatPeopleSayAboutBusinesses = async (req, res) => {
     const whatPeopleSay = await BusinessReview.aggregate([
       { $match: { business: { $in: businessIds.map(id => mongoose.Types.ObjectId(id)) } } },
       { $project: { review: 1, business: 1, likes: 1 } },
-      { $group: { _id: '$business', whatPeopleSay: { $addToSet: '$review' } } },
     ]);
 
     res.json(whatPeopleSay);

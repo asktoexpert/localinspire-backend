@@ -22,22 +22,12 @@ const businessClaimSchema = new mongoose.Schema(
         'I work here and have permission to claim',
         'Other',
       ],
-    },
-    currentPlan: {
-      type: String,
-      enum: [
-        'free',
-        'sponsored_business_listing_monthly',
-        'enhanced_business_profile_monthly',
-        'sponsored_business_listing_yearly',
-        'enhanced_business_profile_yearly',
-      ],
-      default: 'free',
+      required: true,
     },
     payment: {
       status: String, // 'paid' | ...
       amountPaid: Number,
-      currency: { type: String },
+      currency: { type: String, required: true },
       stripeSubscriptionId: String,
       paidDate: Date,
     },

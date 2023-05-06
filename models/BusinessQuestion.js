@@ -5,12 +5,12 @@ const businessQuestionSchema = mongoose.Schema(
     business: { required: true, type: mongoose.Schema.Types.ObjectId, ref: 'Business' },
     questionText: [String],
     askedBy: { required: true, type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    answers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BusinessAnswer' }],
+    answers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BusinessAnswer', required: true }],
   },
   {
     timestamps: true,
-    toObject: { virtuals: true },
-    toJSON: { virtuals: true },
+    toObject: { virtual: true },
+    toJSON: { virtual: true },
   }
 );
 

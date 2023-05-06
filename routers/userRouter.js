@@ -17,7 +17,6 @@ router
   .post(
     upload.single('photo'),
     userController.resizeUserPhoto,
-    authController.verifyCredentials,
     userController.signupWithCredentials
   );
 

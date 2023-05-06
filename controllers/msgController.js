@@ -8,7 +8,6 @@ exports.sendMessage = async (req, res) => {
 
     if (!intendedReceiver)
       return res.status(404).json({
-        status: 'NOT_FOUND',
         msg: 'The user whom you intend to send a message to, does not exist',
       });
 
@@ -24,12 +23,9 @@ exports.sendMessage = async (req, res) => {
       alert: newMessage._id,
     });
 
-    res
-      .status(201)
-      .json({ status: 'SUCCESS', message: newMessage, msg: 'Message sent successfully' });
+    res.status(400).json({ message: newMessage, msg: 'Message sent successfully' });
   } catch (err) {
     console.log(err);
-    res.status(400).json({ status: 'FAIL' });
   }
 };
 
@@ -38,5 +34,5 @@ exports.getNewMessages = async (req, res) => {
     { path: 'from', select: 'firstName lastName' },
   ]);
 
-  res.status(200).json({ status: 'SUCCESS', total: msgs.length, messages: msgs });
+  res.status(200).json({ messages: msgs });
 };
