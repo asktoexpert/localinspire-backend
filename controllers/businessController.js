@@ -303,73 +303,13 @@ exports.getBusinessUpgradePlans = async (req, res) => {
   }
 };
 
-exports.getBusinessClaimCheckoutSession = async (req, res) => {
-  try {
-    const returnUrl = req.query.returnUrl;
-    const prices = await stripe.prices.list({ expand: ['data.product'] });
-    const foundStripePrice = prices.data.find(pr => pr.id === req.query.priceId);
-
-    if (!foundStripePrice)
-      return res.status(400).json({
-        status: 'FAIL',
-        msg: 'Invalid package specified. This is not a valid business upgrade package',
-      });
-
-    if (!returnUrl?.length)
-      return res.status(400).json({
-        status: 'FAIL',
-        msg: "No slug specified for this business page via a 'slug' query param",
-      });
-
-    // Get business claim
-    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate(
-      'business',
-      'businessName address images'
-    );
-
-    console.log(claim);
-
-    const frontendUrl = {
-      development: process.env.LOCALINSPIRE_FRONTEND_URL_DEV,
-      production: process.env.LOCALINSPIRE_FRONTEND_URL_PROD,
-    };
-
-    // const stripeCustomer = await stripe.customers.create({ email: req.user.email });
-    // stripeCustomer.id is valid
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      billing_address_collection: 'auto',
-      line_items: [
-        {
-          price: foundStripePrice.id,
-          quantity: 1, // For metered billing, do not pass 'quantity'
-          // images: claim.business.images.slice(0, 8).map(img => img.imgUrl),
-        },
-      ],
-      client_reference_id: req.params.id,
-      customer: req.user._id,
-      customer_email: req.user.email,
-      success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl || ''),
-      // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
-    });
-
-    console.log('Stripe checkout session: ', session);
-
-    res.status(200).json({ status: 'SUCCESS', session });
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ error: err.message });
-  }
-};
-
 const acknowledgeBusinessClaimPayment = async session => {
   console.log('/////// Acknowledge function begines//////////');
   try {
     console.log('Acknowledged Session: ', session);
     const paidDate = new Date();
 
+    // All existing stripe price nicknames valid for business claim/upgrade
     const priceNicknames = [
       'sponsored_business_listing_monthly',
       'sponsored_business_listing_yearly',
@@ -377,18 +317,17 @@ const acknowledgeBusinessClaimPayment = async session => {
       'enhanced_business_profile_yearly',
     ];
 
-    const claim = await BusinessClaim.findOne({ business: session.client_reference_id });
-
     const prices = await stripe.prices.list();
-
     const price = prices.data.find(pr => {
       return (
         priceNicknames.includes(pr.nickname) &&
         +pr.unit_amount_decimal === +session.amount_subtotal
       );
     });
-
     console.log({ price });
+
+    // Update the paid status of the claim object
+    const claim = await BusinessClaim.findOne({ business: session.client_reference_id });
 
     claim.currentPlan = price.nickname;
     claim.payment = {
@@ -410,7 +349,6 @@ const acknowledgeBusinessClaimPayment = async session => {
 exports.stripePaymentWebhookHandler = async (req, res) => {
   const signature = req.headers['stripe-signature'];
   let event;
-
   console.log('Webhook controller log: ', { signature, 'req.body': req.body });
 
   try {
@@ -475,4 +413,65 @@ exports.stripePaymentWebhookHandler = async (req, res) => {
   }
   // Return a 200 response to acknowledge receipt of the event
   res.status(200).json({ received: true });
+};
+
+exports.getBusinessClaimCheckoutSession = async (req, res) => {
+  try {
+    const returnUrl = req.query.returnUrl;
+    const prices = await stripe.prices.list({ expand: ['data.product'] });
+    const foundStripePrice = prices.data.find(pr => pr.id === req.query.priceId);
+
+    if (!foundStripePrice)
+      return res.status(400).json({
+        status: 'FAIL',
+        msg: 'Invalid package specified. This is not a valid business upgrade package',
+      });
+
+    if (!returnUrl?.length)
+      return res.status(400).json({
+        status: 'FAIL',
+        msg: "No slug specified for this business page via a 'slug' query param",
+      });
+
+    // Get business claim
+    const claim = await BusinessClaim.findOne({ business: req.params.id }).populate(
+      'business',
+      'businessName address images'
+    );
+
+    console.log(claim);
+
+    const frontendUrl = {
+      development: process.env.LOCALINSPIRE_FRONTEND_URL_DEV,
+      production: process.env.LOCALINSPIRE_FRONTEND_URL_PROD,
+    };
+
+    // const stripeCustomer = await stripe.customers.create({ email: req.user.email });
+    // stripeCustomer.id is valid
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      billing_address_collection: 'auto',
+      line_items: [
+        {
+          price: foundStripePrice.id,
+          quantity: 1, // For metered billing, do not pass 'quantity'
+          // images: claim.business.images.slice(0, 8).map(img => img.imgUrl),
+        },
+      ],
+      client_reference_id: req.params.id,
+      customer: req.user._id,
+      customer_email: req.user.email,
+      success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl || ''),
+      // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
+    });
+
+    console.log('Stripe checkout session: ', session);
+
+    res.status(200).json({ status: 'SUCCESS', session });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({ error: err.message });
+  }
 };
