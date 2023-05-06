@@ -21,7 +21,7 @@ router
   );
 
 router.route('/:id/profile').get(userController.getUserPublicProfile);
-router.route('/:id/profile/views').patch(userController.updateProfileViews);
+router.route('/:id/profile/views').patch(userController.updateProfileViewsCount);
 
 router.route('/is-email-in-use').get(userController.checkEmailAlreadyInUse);
 
