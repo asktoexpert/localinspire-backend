@@ -18,78 +18,56 @@ exports.getAllCities = async (req, res) => {
   }
 };
 
-// exports.searchCities = async (req, res, next) => {
-//   const { textQuery } = req.searchCitiesParams || req.query;
-
-//   try {
-//     // const cities = await Business.find({
-//     //   city: { $regex: `^${textQuery}.*`, $options: 'i' },
-//     // })
-//     //   .select('+city +stateCode')
-//     //   .distinct('city');
-//     let [cityQuery, stateQuery] = textQuery.split('-');
-
-//     [cityQuery, stateQuery] = [
-//       toTitleCase(cityQuery.toLowerCase().trim()),
-//       stateQuery?.toUpperCase().trim(),
-//     ];
-//     console.log({ cityQuery, stateQuery });
-
-//     const filters = { city: { $regex: `^${cityQuery}` } };
-
-//     if (stateQuery) filters.stateCode = { $regex: `^${stateQuery}` };
-
-//     const [result] = await Business.aggregate([
-//       { $match: filters },
-//       { $project: { cityInState: { $concat: ['$city', ', ', '$stateCode'] } } },
-//       { $group: { _id: null, cities: { $addToSet: '$cityInState' } } },
-//       { $project: { _id: 0 } },
-//     ]);
-
-//     if (!result?.cities) {
-//       return res.json({  source: 'db', results: 0, cities: [] });
-//     }
-
-//     // Cache matching cities
-//     let { cities } = result;
-//     console.log({ cities });
-
-//     if (cities.length) {
-//       cities.sort((prev, next) => prev.length - next.length); // In asc order of string length
-//       await cityQueries.cacheCitySearchResults(cities);
-//     }
-
-//     res.status(200).json({  source: 'db', results: cities.length, cities });
-//   } catch (err) {
-//     console.log('Error: ', err);
-
-//     res.status(500).json({
-//       status: 'ERROR',
-//       source: 'db',
-//       msg: err.message,
-//     });
-//   }
-// };
-
 exports.searchCities = async (req, res, next) => {
+  const { textQuery } = req.searchCitiesParams || req.query;
+
   try {
-    const [nameQuery, stateCodeQuery] = req.query.textQuery.split('-');
-    const filter = {};
+    // const cities = await Business.find({
+    //   city: { $regex: `^${textQuery}.*`, $options: 'i' },
+    // })
+    //   .select('city stateCode')
+    //   .distinct('city');
+    let [cityQuery, stateQuery] = textQuery.split('-');
 
-    if (nameQuery) filter.name = { $regex: `^${toTitleCase(nameQuery.trim())}` };
+    [cityQuery, stateQuery] = [
+      toTitleCase(cityQuery.toLowerCase().trim()),
+      stateQuery?.toUpperCase().trim(),
+    ];
+    console.log({ cityQuery, stateQuery });
 
-    if (stateCodeQuery)
-      filter.stateCode = { $regex: `^${stateCodeQuery.toUpperCase().trim()}` };
+    const filters = { city: { $regex: `^${cityQuery}` } };
 
-    const [result] = await City.aggregate([
-      { $match: filter },
-      { $sort: { searchesCount: -1 } },
+    if (stateQuery) filters.stateCode = { $regex: `^${stateQuery}` };
+
+    const [result] = await Business.aggregate([
+      { $match: filters },
+      { $project: { cityInState: { $concat: ['$city', ', ', '$stateCode'] } } },
+      { $group: { _id: null, cities: { $addToSet: '$cityInState' } } },
+      { $project: { _id: 0 } },
     ]);
 
-    res.status(200).json({ results: result.cities?.length, cities: result.cities });
+    if (!result?.cities) {
+      return res.json({ source: 'db', results: 0, cities: [] });
+    }
+
+    // Cache matching cities
+    let { cities } = result;
+    console.log({ cities });
+
+    if (cities.length) {
+      cities.sort((prev, next) => prev.length - next.length); // In asc order of string length
+      await cityQueries.cacheCitySearchResults(cities);
+    }
+
+    res.status(200).json({ source: 'db', results: cities.length, cities });
   } catch (err) {
-    console.log(err);
-    res.status(400).json({ error: err.message });
+    console.log('Error: ', err);
+
+    res.status(500).json({
+      status: 'ERROR',
+      source: 'db',
+      msg: err.message,
+    });
   }
 };
 
@@ -108,7 +86,7 @@ exports.toggleCityFeatured = async (req, res) => {
 
 exports.getStateNames = async (req, res) => {
   try {
-    const stateNames = await City.find({}).select('stateName').distinct('stateName');
+    const stateNames = await City.find({}).select('stateName');
     res.status(200).json({ results: stateNames.length, stateNames });
   } catch (err) {
     console.log(err);
@@ -153,7 +131,7 @@ exports.updateCity = async (req, res) => {
     if (req.body.price) {
       const stripePrices = await stripe.prices.list();
       const existingStripePrice = stripePrices.data.find(pr => {
-        return +pr.unit_amount_decimal / 100 === +req.body.price;
+        return pr.unit_amount / 100 === req.body.price;
       });
 
       if (existingStripePrice) {
@@ -169,13 +147,10 @@ exports.updateCity = async (req, res) => {
           product: cityClaimProduct.id,
         });
 
-        city.price = {
-          amount: req.body.price,
-          currency: newPrice.currency,
-        };
+        city.price = { amount: req.body.price, currency: newPrice.currency };
       } else {
         city.price = {
-          amount: +req.body.price,
+          amount: req.body.price,
           currency: existingStripePrice.currency,
           stripePriceId: existingStripePrice.id,
           stripePriceNickname: existingStripePrice.nickname,
