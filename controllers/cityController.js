@@ -39,6 +39,11 @@ exports.searchCities = async (req, res, next) => {
 
     if (stateQuery) filters.stateCode = { $regex: `^${stateQuery}` };
 
+    if (!req.query.populateFields) {
+      const cities = await City.find(filters);
+      return res.status(200).json({ status: 'SUCCESS', cities });
+    }
+
     const [result] = await Business.aggregate([
       { $match: filters },
       { $project: { cityInState: { $concat: ['$city', ', ', '$stateCode'] } } },
