@@ -401,7 +401,7 @@ exports.getBusinessClaimCheckoutSession = async (req, res) => {
       client_reference_id: req.params.business_id,
       customer: req.user._id,
       success_url: frontendUrl[process.env.NODE_ENV].concat(returnUrl),
-      // cancel_url: `${req.protocol}://${req.get(hostname)}/payment-cancelled`,
+      cancel_url: frontendUrl[process.env.NODE_ENV].concat(req.query.cancelUrl),
     });
 
     console.log('Stripe checkout session: ', session);
